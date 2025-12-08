@@ -11,7 +11,8 @@ Lab Lens is an end-to-end MLOps pipeline for healthcare that combines medical re
 ### 🎯 Key Features
 
 - **Medical Report Summarization**: Simplifying discharge summaries using MIMIC-III clinical notes
-- **Chest X-ray Classification**: Pathology detection using MedMNIST-ChestMNIST (CPU-optimized)
+- **RAG-Powered Patient Q&A**: Answer patient questions about discharge summaries using semantic search
+- **Risk Prediction**: Patient risk assessment for readmission and complications
 - **Automated Bias Detection**: Comprehensive bias analysis and mitigation
 - **Data Quality Validation**: Robust data validation and quality assurance
 - **Production-Ready Pipeline**: Complete MLOps pipeline with error handling and logging
@@ -50,6 +51,124 @@ Lab Lens is an end-to-end MLOps pipeline for healthcare that combines medical re
 - **Logging System**: Centralized logging with performance metrics
 - **Monitoring**: Continuous data quality monitoring
 
+### 5. Risk Prediction Model
+- **Purpose**: Predicts patient risk levels for readmission or complications
+- **Methods**: Rule-based scoring and Gemini AI-based analysis (with fallback)
+- **Output**: Risk level (LOW/MEDIUM/HIGH) and risk score (0.0-1.0)
+- **Factors Considered**: Age, clinical conditions, lab values, diagnoses, complexity, urgency
+
+### 6. RAG-Powered Patient Q&A System
+- **Purpose**: Enable patients to ask questions about their discharge summaries
+- **Technology**: Retrieval-Augmented Generation with semantic search
+- **Features**: Single-patient mode, patient-friendly answers, source citations
+- **Performance**: Fast (5-10 sec), efficient (<100 MB memory per patient)
+
+## 🎯 Risk Prediction Methodology
+
+The risk prediction model assigns risk metrics using a weighted scoring system that combines multiple clinical and demographic factors.
+
+### Risk Scoring System
+
+The model uses two approaches:
+1. **Rule-Based Approach (Default)**: Weighted sum of clinical factors
+2. **Gemini AI-Based Approach (Optional)**: Advanced AI analysis of discharge summaries
+
+### Scoring Factors & Weights
+
+| Factor | Weight | Threshold | Description |
+|--------|--------|-----------|-------------|
+| **Age** | +0.30 | Age ≥ 75 | High risk age |
+| | +0.15 | Age ≥ 65 | Medium risk age |
+| **High-Risk Keywords** | +0.40 | ≥3 keywords | Very high condition risk |
+| | +0.30 | ≥2 keywords | High condition risk |
+| | +0.20 | ≥1 keyword | Medium condition risk |
+| **Abnormal Lab Values** | +0.20 | ≥3 abnormal labs | High lab risk |
+| | +0.10 | ≥1 abnormal lab | Medium lab risk |
+| **Multiple Diagnoses** | +0.15 | ≥5 diagnoses | High diagnosis complexity |
+| | +0.10 | ≥3 diagnoses | Medium diagnosis complexity |
+| **Complexity Score** | +0.10 | >0.7 | High document complexity |
+| | +0.05 | >0.5 | Medium document complexity |
+| **Urgency Indicator** | +0.10 | ≥2 | High urgency |
+| | +0.05 | ≥1 | Medium urgency |
+
+### Risk Level Classification
+
+After calculating the total weighted score (maximum 1.0):
+
+- **HIGH Risk**: Score ≥ 0.7
+- **MEDIUM Risk**: Score ≥ 0.4 and < 0.7
+- **LOW Risk**: Score < 0.4
+
+### High-Risk Keywords (23 conditions)
+
+Critical conditions that contribute significantly to risk assessment:
+- **Critical Conditions**: sepsis, shock, cardiac arrest, stroke, myocardial infarction
+- **Organ Failures**: respiratory failure, renal failure, liver failure, multiorgan failure
+- **Severe Indicators**: severe, critical, acute, emergency, icu, intensive care
+- **Procedures**: ventilator, intubation, dialysis, transfusion, surgery
+- **Complications**: complication, infection, bleeding, hemorrhage
+
+### Medium-Risk Keywords (14 conditions)
+
+Chronic and moderate conditions:
+- **Chronic Conditions**: hypertension, diabetes, copd, asthma, chf, congestive heart failure
+- **Infections**: pneumonia, uti, urinary tract infection
+- **Other**: dehydration, electrolyte imbalance, anemia, fever, infection
+
+### Example Risk Calculation
+
+For a 28-year-old male patient with multiple stab wounds:
+- **Age (28)**: +0.00 (below threshold)
+- **High-risk keywords (5 found)**: +0.40 (surgery, emergency, bleeding, etc.)
+- **Abnormal labs (382)**: +0.20 (≥3 labs)
+- **Diagnoses (9)**: +0.15 (≥5 diagnoses)
+- **Complexity score (high)**: +0.10
+- **Urgency indicator (high)**: +0.10
+
+**Total Score**: 0.00 + 0.40 + 0.20 + 0.15 + 0.10 + 0.10 = **0.95**
+
+**Risk Level**: **HIGH** (0.95 ≥ 0.7) ✓
+
+### Risk Factors Extracted
+
+The model extracts the following factors from each discharge record:
+- `age`: Patient age at admission
+- `abnormal_labs`: Count of abnormal laboratory values
+- `diagnosis_count`: Number of diagnoses
+- `text_length`: Length of discharge summary text
+- `has_medications`: Whether medications are documented
+- `has_follow_up`: Whether follow-up care is scheduled
+- `complexity_score`: Document complexity metric (0-1)
+- `urgency_indicator`: Urgency level indicator (0-3)
+- `high_risk_keywords`: Count of high-risk condition keywords found
+- `medium_risk_keywords`: Count of medium-risk condition keywords found
+- `total_risk_keywords`: Total keywords identified
+
+### Gemini AI-Based Risk Prediction
+
+When enabled, the Gemini AI approach:
+- Analyzes full discharge summary text (up to 3000 characters)
+- Considers clinical context, relationships, and nuance
+- Returns structured risk assessment with:
+  - Risk level (LOW/MEDIUM/HIGH)
+  - Risk score (0.0-1.0)
+  - Key risk factors identified
+  - Clinical recommendations
+- Falls back to rule-based method if unavailable
+
+### Usage
+
+```bash
+# Test risk prediction with MIMIC data
+python scripts/test_complete_model.py
+
+# Test with specific record
+python scripts/test_complete_model.py --index 5
+
+# Test with specific HADM ID
+python scripts/test_complete_model.py --hadm-id 149188
+```
+
 ## 🗂️ Project Structure
 
 ```
@@ -81,11 +200,19 @@ lab-lens/
 │   │   ├── logging_config.py # Centralized logging
 │   │   └── error_handling.py # Error management
 │   ├── 📁 data/              # Data processing modules
+│   ├── 📁 rag/               # RAG (Retrieval-Augmented Generation) system
+│   │   ├── rag_system.py     # Core RAG implementation
+│   │   └── patient_qa.py     # Patient Q&A interface
 │   ├── 📁 training/          # Model training modules
 │   └── 📁 utils/             # General utilities
 ├── 📁 configs/               # Global configuration files
 ├── 📁 notebooks/             # Global notebooks
 ├── 📁 scripts/               # Global scripts
+│   ├── patient_qa_single.py  # Single-patient RAG Q&A
+│   ├── patient_qa_interactive.py  # Interactive RAG Q&A
+│   └── test_rag_with_record.py    # RAG testing script
+├── 📁 models/                # Model storage
+│   └── 📁 rag_embeddings/    # Cached RAG embeddings
 ├── 📁 tests/                 # Unit tests
 ├── LICENSE                   # Project license
 └── README.md                 # This file
@@ -294,6 +421,193 @@ python -m pytest tests/integration/
 python tests/test_pipeline_integration.py
 ```
 
+## 🔍 RAG (Retrieval-Augmented Generation) System Testing
+
+The RAG system enables patients to ask questions about their discharge summaries using semantic search and AI-powered answer generation.
+
+### Overview
+
+- **Purpose**: Allow patients to ask questions about their discharge summary
+- **Mode**: Single-patient mode (loads only one patient's record)
+- **Features**: Semantic search, patient-friendly answers, source citations
+
+### Quick Start
+
+#### Single-Patient Q&A (Recommended)
+
+Test with a specific patient's discharge summary:
+
+```bash
+# Interactive Q&A for a specific patient
+python scripts/patient_qa_single.py --hadm-id 130656
+```
+
+This loads **only that patient's record** and allows interactive Q&A.
+
+#### View Patient Record First
+
+```bash
+# View the discharge summary before asking questions
+python scripts/patient_qa_single.py --hadm-id 130656 --view
+```
+
+#### Ask a Single Question
+
+```bash
+# Ask one question
+python scripts/patient_qa_single.py \
+  --hadm-id 130656 \
+  --question "What are my diagnoses?"
+```
+
+### Step-by-Step Testing Guide
+
+#### Step 1: List Available Records
+
+Find available patient HADM IDs:
+
+```bash
+python scripts/test_rag_with_record.py --list-records
+```
+
+This shows available HADM IDs from your processed discharge summaries.
+
+#### Step 2: Test with a Specific Patient
+
+```bash
+# Interactive mode (best for testing)
+python scripts/patient_qa_single.py --hadm-id 130656
+```
+
+Then you can:
+- Type questions interactively
+- Type `help` for example questions
+- Type `summary` to see patient record
+- Type `exit` to quit
+
+#### Step 3: Ask Example Questions
+
+Try questions like:
+- "What are my diagnoses?"
+- "What medications do I need to take?"
+- "What happened during my hospital stay?"
+- "What are my discharge instructions?"
+- "When is my follow-up appointment?"
+- "What should I watch for at home?"
+
+### Advanced Testing
+
+#### View and Test Workflow
+
+```bash
+# Step 1: View patient record
+python scripts/test_rag_with_record.py --view-record 130656
+
+# Step 2: Test RAG with default questions
+python scripts/test_rag_with_record.py --test 130656
+
+# Step 3: Test with custom questions
+python scripts/test_rag_with_record.py --test 130656 \
+  --questions "What are my diagnoses?" "What medications do I need?"
+```
+
+#### Python API Usage
+
+```python
+from src.rag.patient_qa import PatientQA
+
+# Initialize with single patient (loads only that patient's record)
+qa = PatientQA(
+    data_path="data-pipeline/data/processed/processed_discharge_summaries.csv",
+    hadm_id=130656  # Single-patient mode
+)
+
+# Ask questions
+result = qa.ask_question("What are my diagnoses?")
+print(result['answer'])
+print(f"Sources: {len(result['sources'])} sections found")
+```
+
+### Prerequisites
+
+1. **Dependencies**:
+   ```bash
+   pip install sentence-transformers faiss-cpu google-generativeai
+   ```
+
+2. **Google API Key**:
+   ```bash
+   export GOOGLE_API_KEY="your-api-key"
+   # Or use
+   python scripts/setup_gemini_api_key.py
+   ```
+
+3. **Processed Data**: Ensure discharge summaries are processed:
+   ```bash
+   python data-pipeline/scripts/main_pipeline.py
+   ```
+
+### Single-Patient Mode Benefits
+
+✅ **Fast**: Only processes one patient's record (5-10 seconds vs 2-5 minutes)  
+✅ **Efficient**: Minimal memory usage (<100 MB vs 2-4 GB)  
+✅ **Secure**: Only loads that specific patient's data  
+✅ **Simple**: No filtering needed - all data is from that patient  
+
+### Performance
+
+- **First run** (create embeddings): 5-10 seconds for one patient
+- **Subsequent runs** (cached): 1-2 seconds
+- **Question answering**: 2-5 seconds per question
+- **Memory usage**: <100 MB (vs 2-4 GB for all records)
+
+### Example Output
+
+```
+======================================================================
+SINGLE PATIENT Q&A - HADM ID: 130656
+======================================================================
+
+Loading only this patient's discharge summary...
+✅ RAG System ready!
+
+❓ Your question: What are my diagnoses?
+
+======================================================================
+ANSWER
+======================================================================
+
+Based on your discharge summary, your primary diagnoses include...
+
+📚 Sources: 5 relevant sections found
+   Top relevance score: 0.852
+======================================================================
+```
+
+### Troubleshooting
+
+**Error: No record found with HADM ID**
+- Verify HADM ID exists: `python scripts/test_rag_with_record.py --list-records`
+
+**Error: GOOGLE_API_KEY not found**
+```bash
+export GOOGLE_API_KEY="your-api-key"
+```
+
+**Error: Missing dependencies**
+```bash
+pip install sentence-transformers faiss-cpu
+```
+
+**Process crashes during embedding generation**
+- This is normal for large datasets - use single-patient mode instead
+
+### Documentation
+
+- **Complete Guide**: See `RAG_TESTING_GUIDE.md`
+- **Single-Patient Guide**: See `RAG_SINGLE_PATIENT_GUIDE.md`
+- **Status Report**: See `RAG_STATUS_REPORT.md`
+
 ## 📚 Documentation
 
 ### API Documentation
@@ -311,7 +625,7 @@ python tests/test_pipeline_integration.py
 ## 🔮 Future Roadmap
 
 ### Phase 1: Enhanced ML Integration
-- [ ] BioBERT integration for medical entity extraction
+- [x] Gemini 1.5 Pro integration for medical text summarization
 - [ ] Advanced NLP models for text summarization
 - [ ] Multi-modal model training pipeline
 - [ ] Model versioning and experiment tracking
@@ -390,6 +704,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ✅ **Built production-ready MLOps pipeline**  
 ✅ **Comprehensive error handling and logging**  
 ✅ **Real-time monitoring and alerting**  
+✅ **RAG-Powered Patient Q&A System** - Single-patient mode for efficient Q&A  
 ✅ **Scalable and maintainable architecture**  
 
 *Developed as part of MLOps Course Project - Fall 2025*

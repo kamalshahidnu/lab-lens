@@ -277,3 +277,10 @@ mlartifacts/
 !tokenizer_config.json
 !.env.template
 !requirements.txtvenv311/
+credentials/
+.env
+credentials/oauth_client.json
+airflow/airflow.db
+airflow/airflow-webserver.pid
+airflow/logs/
+airflow/airflow.cfg

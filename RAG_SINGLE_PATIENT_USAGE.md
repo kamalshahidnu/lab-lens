@@ -116,3 +116,8 @@ python scripts/patient_qa_single.py --hadm-id 130656
 
 This will load only patient 130656's discharge summary and let you ask questions interactively!
 
+
+
+
+
+

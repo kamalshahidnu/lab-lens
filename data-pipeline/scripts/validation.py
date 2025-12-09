@@ -484,6 +484,7 @@ class MIMICDataValidator:
         logger.info("Validating identifiers...")
         validation_report['identifiers'] = self.validate_identifiers(df)
         
+        
         # Calculate overall validation score
         validation_report['overall_score'] = self.calculate_validation_score(validation_report)
         
@@ -613,6 +614,11 @@ class MIMICDataValidator:
             ('Validation Score', f"{report['overall_score']:.2f}%",
              'PASS' if report['overall_score'] >= 80 else 'WARNING' if report['overall_score'] >= 60 else 'FAIL')
         ]
+        
+            for metric, value, status in image_metrics:
+                summary_data['Metric'].append(metric)
+                summary_data['Value'].append(value)
+                summary_data['Status'].append(status)
         
         for metric, value, status in metrics:
             summary_data['Metric'].append(metric)

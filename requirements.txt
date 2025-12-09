@@ -17,10 +17,22 @@ google-auth>=2.17.0
 google-auth-oauthlib>=1.0.0
 google-auth-httplib2>=0.1.0
 
-# Machine learning and NLP (future enhancements)
+# Machine learning and NLP
 scikit-learn>=1.3.0
-transformers>=4.30.0
-torch>=2.0.0
+
+# Medical image analysis models (optional - for BiomedCLIP and medical models)
+# Option 1: Local models (download model to your machine)
+transformers>=4.30.0  # For BiomedCLIP and medical-specific models (local)
+torch>=2.0.0  # PyTorch for medical models (local)
+torchvision>=0.15.0  # For image preprocessing (local)
+sentence-transformers>=2.2.0  # For BiomedCLIP embeddings (local)
+
+# Option 2: API-based (use Hugging Face Inference API - no model download)
+requests>=2.31.0  # For Hugging Face API calls
+huggingface_hub>=0.20.0  # Optional: Better API client for Hugging Face (recommended)
+
+# Gemini 1.5 Pro API
+google-generativeai>=0.3.0  # Google Gemini API
 
 # Development and testing
 pytest>=7.4.0
@@ -32,12 +44,48 @@ mypy>=1.5.0
 
 # Documentation
 sphinx>=7.0.0
+
+# RAG (Retrieval-Augmented Generation) for Patient Q&A
+# Note: sentence-transformers is already listed above for BiomedCLIP
+faiss-cpu>=1.7.4  # For efficient vector similarity search (optional but recommended)
+chromadb>=0.4.0  # Vector database for persistent document storage (recommended)
 sphinx-rtd-theme>=1.3.0
+
+# Document processing for RAG (text, PDF, images)
+PyPDF2>=3.0.0  # PDF text extraction (alternative: pdfplumber>=0.9.0)
+pdfplumber>=0.9.0  # Better PDF text extraction (recommended)
+pytesseract>=0.3.10  # OCR for image text extraction
+Pillow>=10.0.0  # Image processing (for OCR and vision)
+
+# Web interface for File Q&A
+streamlit>=1.28.0  # Modern web interface for chat-based Q&A
 
 # Utilities
 python-dotenv>=1.0.0
 pyyaml>=6.0
 tqdm>=4.65.0
 
+# Experiment tracking and model registry
+mlflow>=2.8.0
+mlflow[extras]>=2.8.0
+
+# Model evaluation metrics
+rouge-score>=0.1.2
+nltk>=3.8.1
+sacrebleu>=2.3.1
+
+# Bias detection and fairness
+fairlearn>=0.9.0
+
+# Sensitivity analysis
+shap>=0.43.0
+lime>=0.2.0.1
+
+# Hyperparameter tuning
+optuna>=3.4.0
+scikit-optimize>=0.9.0
+
+# Google Cloud for model registry
+google-cloud-artifact-registry>=1.8.0
 
 dvc

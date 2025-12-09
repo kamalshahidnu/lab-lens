@@ -9,7 +9,7 @@
     "enable_automated_bias_handling": true,
     "auto_mitigation": true,
     "save_intermediate_results": true,
-    "log_level": "INFO"
+    "log_level": "INFO",
   },
   "bias_detection_config": {
     "enabled": true,
@@ -89,5 +89,5 @@
     "enable_data_metrics_logging": true,
     "enable_function_call_logging": false,
     "performance_threshold_seconds": 60
-  }
+  },
 }

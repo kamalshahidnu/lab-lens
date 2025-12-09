@@ -124,3 +124,8 @@ pip install sentence-transformers faiss-cpu
 3. Then use the full dataset once embeddings are cached
 4. Use interactive mode for natural Q&A
 
+
+
+
+
+

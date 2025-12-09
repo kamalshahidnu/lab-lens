@@ -102,6 +102,58 @@ class RAGSystem:
         if data_path:
             self.load_data(data_path, hadm_id=hadm_id or self.hadm_id)
     
+    def load_custom_documents(self, documents: List[Dict[str, any]], force_rebuild: bool = False):
+        """
+        Load custom documents (text, PDF, images) into the RAG system
+        
+        Args:
+            documents: List of document dictionaries with 'text' and 'metadata' keys
+            force_rebuild: Force rebuild embeddings even if cache exists
+        """
+        if not documents:
+            raise ValueError("No documents provided")
+        
+        logger.info(f"Loading {len(documents)} custom documents")
+        
+        # Create chunks from custom documents
+        self.chunks = []
+        self.metadata = []
+        
+        for doc_idx, doc in enumerate(documents):
+            text = doc.get('text', '')
+            if not text or not text.strip():
+                logger.warning(f"Document {doc_idx} has no text content, skipping")
+                continue
+            
+            # Split text into chunks
+            text_chunks = self._split_text(text)
+            
+            for chunk_idx, chunk in enumerate(text_chunks):
+                self.chunks.append(chunk)
+                self.metadata.append({
+                    'document_index': doc_idx,
+                    'document_name': doc.get('file_name', f'doc_{doc_idx}'),
+                    'document_type': doc.get('file_type', 'unknown'),
+                    'chunk_index': chunk_idx,
+                    'total_chunks': len(text_chunks),
+                    **doc.get('metadata', {})
+                })
+        
+        logger.info(f"Created {len(self.chunks)} chunks from {len(documents)} documents")
+        
+        # Generate embeddings
+        if not self.embedding_model:
+            logger.error("Cannot create embeddings: embedding model not available")
+            return
+        
+        logger.info(f"Generating embeddings for {len(self.chunks)} chunks...")
+        embeddings = self._generate_embeddings()
+        
+        # Build index
+        self._build_index(embeddings)
+        
+        logger.info(f"Successfully loaded {len(documents)} custom documents with {len(self.chunks)} chunks")
+    
     @safe_execute("load_data", logger, ErrorHandler(logger))
     def load_data(self, data_path: str, force_rebuild: bool = False, hadm_id: Optional[int] = None):
         """
@@ -326,21 +378,31 @@ class RAGSystem:
         if FAISS_AVAILABLE and self.index is not None:
             # FAISS search
             query_embedding = query_embedding.reshape(1, -1).astype('float32')
-            scores, indices = self.index.search(query_embedding, min(k * 2, self.index.ntotal))
+            search_k = min(k * 2, max(self.index.ntotal, 1))  # Ensure at least 1
+            scores, indices = self.index.search(query_embedding, search_k)
             scores = scores[0]
             indices = indices[0]
         else:
             # Numpy-based search
+            if not hasattr(self, 'embeddings_normalized') or len(self.embeddings_normalized) == 0:
+                logger.error("No embeddings available for search")
+                return []
             scores = np.dot(self.embeddings_normalized, query_embedding)
-            indices = np.argsort(scores)[::-1][:min(k * 2, len(scores))]
+            search_k = min(k * 2, len(scores))
+            indices = np.argsort(scores)[::-1][:search_k]
             scores = scores[indices]
+        
+        logger.debug(f"Search results: {len(scores)} scores, range: [{scores.min():.3f}, {scores.max():.3f}]")
         
         # Filter and format results
         results = []
+        scores_list = []
         for score, idx in zip(scores, indices):
+            scores_list.append(float(score))
+            
             # Filter by HADM ID if specified
             if hadm_id_filter is not None:
-                if self.metadata[idx]['hadm_id'] != hadm_id_filter:
+                if self.metadata[idx].get('hadm_id') != hadm_id_filter:
                     continue
             
             # Filter by minimum score
@@ -357,7 +419,12 @@ class RAGSystem:
             if len(results) >= k:
                 break
         
-        logger.info(f"Retrieved {len(results)} chunks for query: {query[:50]}...")
+        # Log scores for debugging
+        if scores_list:
+            logger.info(f"Retrieved {len(results)} chunks for query: {query[:50]}... (scores: min={min(scores_list):.3f}, max={max(scores_list):.3f}, mean={sum(scores_list)/len(scores_list):.3f}, threshold={min_score})")
+        else:
+            logger.warning(f"No scores computed. Chunks available: {len(self.chunks)}, Index status: {self.index is not None if FAISS_AVAILABLE else 'numpy'}")
+        
         return results
     
     def get_full_record(self, hadm_id: int) -> Optional[Dict]:

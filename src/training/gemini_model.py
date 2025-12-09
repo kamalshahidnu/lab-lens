@@ -10,6 +10,17 @@ import time
 from typing import Dict, List, Optional, Tuple
 import pandas as pd
 from pathlib import Path
+import warnings
+
+# Suppress gRPC warnings
+os.environ['GRPC_VERBOSITY'] = 'ERROR'
+os.environ['GRPC_PYTHON_LOG_LEVEL'] = 'ERROR'
+# Suppress absl logging warnings (if available)
+try:
+    import absl.logging
+    absl.logging.set_verbosity(absl.logging.ERROR)
+except ImportError:
+    pass  # absl not available, warnings will be suppressed by env vars
 
 # Add parent directory to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
@@ -132,7 +143,7 @@ Please summarize the following medical discharge summary in approximately {max_l
 Summary:"""
         
         try:
-            # Generate response
+            # Generate response (API has built-in timeout, but we add error handling)
             response = self.model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
@@ -145,6 +156,10 @@ Summary:"""
             return summary
             
         except Exception as e:
+            error_msg = str(e).lower()
+            if 'timeout' in error_msg or 'timed out' in error_msg:
+                logger.error(f"Timeout generating summary: {e}")
+                raise TimeoutError(f"API call timed out: {e}")
             logger.error(f"Error generating summary: {e}")
             raise
     
@@ -225,7 +240,7 @@ PATIENT'S QUESTION: {question}
 ANSWER (based only on the discharge summary above):"""
         
         try:
-            # Generate response
+            # Generate response (API has built-in timeout, but we add error handling)
             response = self.model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
@@ -238,6 +253,10 @@ ANSWER (based only on the discharge summary above):"""
             return answer
             
         except Exception as e:
+            error_msg = str(e).lower()
+            if 'timeout' in error_msg or 'timed out' in error_msg:
+                logger.error(f"Timeout generating answer: {e}")
+                raise TimeoutError(f"API call timed out: {e}")
             logger.error(f"Error generating answer: {e}")
             raise
     

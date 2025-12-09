@@ -628,6 +628,7 @@ def engineer_features(df: pd.DataFrame, logger: logging.Logger, with_sections: b
         logger.info("Adding section flags and negation density...")
         df = add_section_flags(df, text_col="cleaned_text")
 
+
     # One-hot encode demographic categories
     logger.info("One-hot encoding demographics...")
     for col, k, prefix in [

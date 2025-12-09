@@ -105,10 +105,13 @@ def test_questions(qa_system: PatientQA, hadm_id: int, questions: list = None):
             
             if result.get('sources'):
                 print(f"📚 Sources: {len(result['sources'])} relevant sections found")
-                print(f"   Top source relevance score: {result['sources'][0]['score']:.3f}")
                 if len(result['sources']) > 0:
-                    print(f"\n   Top source preview:")
-                    print(f"   {result['sources'][0]['chunk'][:150]}...")
+                    first_source = result['sources'][0]
+                    if 'score' in first_source:
+                        print(f"   Top source relevance score: {first_source['score']:.3f}")
+                    if 'chunk' in first_source:
+                        print(f"\n   Top source preview:")
+                        print(f"   {first_source['chunk'][:150]}...")
             else:
                 print("⚠️  No relevant sources found")
             
@@ -239,13 +242,15 @@ Examples:
         print("INITIALIZING RAG SYSTEM")
         print("="*70)
         print(f"\n📂 Loading data from: {data_path}")
+        print(f"👤 Single-patient mode: Loading only HADM ID {hadm_id}")
         print("⏳ Creating embeddings (this may take a few minutes on first run)...\n")
         
         try:
             qa_system = PatientQA(
                 data_path=str(data_path),
                 embedding_model=args.embedding_model,
-                gemini_model=args.gemini_model
+                gemini_model=args.gemini_model,
+                hadm_id=hadm_id  # Load only this patient's record
             )
             print("✅ RAG System ready!\n")
         except Exception as e:
@@ -265,4 +270,7 @@ Examples:
 
 if __name__ == "__main__":
     main()
+
+
+
 

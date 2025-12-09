@@ -194,6 +194,9 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Local API tokens / secrets
+.huggingface_api_setup.txt
+
 # Cursor
 #  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
@@ -222,6 +225,7 @@ data/processed/
 models/
 
 # MLflow tracking
+mlruns/
 mlruns/.DS_Store
 **/.DS_Store
 .DS_Store
@@ -232,6 +236,15 @@ mlruns/.DS_Store
 /data/processed/*.csv
 /logs/*.log
 *.dvc.lock
+
+# Temporary files
+temp_*.txt
+*.tmp
+*.bak
+*.swp
+
+# Archive (if contains sensitive data)
+docs/archive/*.md
 
 # Python
 __pycache__/
@@ -284,3 +297,5 @@ airflow/airflow.db
 airflow/airflow-webserver.pid
 airflow/logs/
 airflow/airflow.cfg
+.env
+.env.local

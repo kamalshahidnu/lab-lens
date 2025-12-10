@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'scripts/**'
+      - 'src/**'
       - 'requirements.txt'
       - 'Dockerfile.cloudrun'
       - '.github/workflows/deploy-cloud-run.yml'
@@ -29,6 +30,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Verify Secrets
+        run: |
+          if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
+            echo "❌ Error: GCP_PROJECT_ID secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "❌ Error: GCP_SA_KEY secret is not set"
+            exit 1
+          fi
+          echo "✅ Secrets verified"
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -36,19 +49,25 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker
 
       - name: Build and Push Container
         run: |
+          echo "🔨 Building container image..."
           gcloud builds submit \
             --tag gcr.io/$PROJECT_ID/$SERVICE_NAME \
             --file Dockerfile.cloudrun \
-            --timeout=20m
+            --timeout=20m \
+            --project $PROJECT_ID
+        continue-on-error: false
 
       - name: Deploy to Cloud Run
         run: |
+          echo "🚀 Deploying to Cloud Run..."
           gcloud run deploy $SERVICE_NAME \
             --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
             --platform managed \
@@ -59,7 +78,8 @@ jobs:
             --cpu 1 \
             --timeout 300 \
             --max-instances 10 \
-            --set-secrets GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_API_KEY=gemini-api-key:latest
+            --set-secrets GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_API_KEY=gemini-api-key:latest \
+            --project $PROJECT_ID
 
       - name: Get Service URL
         run: |

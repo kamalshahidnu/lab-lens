@@ -33,6 +33,7 @@ from google.genai.errors import APIError
 # Model Configuration
 MODEL_ID = os.getenv("MODEL_ID", "asadwaraich/bart-medical-discharge-summarizer")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+HF_TOKEN = os.getenv("HF_TOKEN")  # Add HuggingFace token
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -63,8 +64,19 @@ class MedicalSummarizer:
                 self.model_name = MODEL_ID  # Use environment variable
             
             logger.info(f"Loading from: {self.model_name}")
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name)
+            
+            # Get HF token from environment
+            hf_token = os.getenv('HF_TOKEN')
+            
+            # Load tokenizer and model with HF token
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name,
+                token=hf_token
+            )
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                self.model_name,
+                token=hf_token
+            )
             self.model.to(self.device)
             logger.info("✅ Model loaded successfully")
         except Exception as e:
@@ -254,7 +266,6 @@ class MedicalSummarizer:
 
         return {
             "final_summary": final_summary,
-            "raw_bart_summary": base_summary,
+            "summary": base_summary,  # Add this line for backward compatibility
             "extracted_data": sections
         }
-

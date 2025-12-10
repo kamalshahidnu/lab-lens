@@ -49,7 +49,7 @@ from src.training.gemini_inference import GeminiInference
 
 ```python
 # Old
-from deployment_pipeline.summarizer import MedicalSummarizer
+from model_deployment.api.summarizer import MedicalSummarizer
 
 # New
 from model_deployment.api.summarizer import MedicalSummarizer

@@ -26,6 +26,34 @@ Lab Lens is an end-to-end MLOps pipeline for healthcare that combines medical re
 - **Dhruv Rameshbhai Gajera** 
 - **Shahid Kamal** 
 
+## 🌐 Web Interface Quick Start
+
+To run the Lab Lens web interface locally:
+
+```bash
+# Clone repository
+git clone https://github.com/kamalshahidnu/lab-lens.git
+cd lab-lens
+
+# Install dependencies
+pip install -r requirements.txt
+pip install pdfplumber
+
+# Set API key (create .env file)
+echo "GEMINI_API_KEY=your-api-key-here" > .env
+
+# Run the web interface
+streamlit run scripts/file_qa_web.py
+```
+
+For detailed setup instructions, see **[WEB_INTERFACE_SETUP.md](./WEB_INTERFACE_SETUP.md)**
+
+**Features:**
+- Upload PDF/text documents and ask questions
+- Automatic document summarization using MedicalSummarizer
+- BioBERT embeddings for better medical text understanding
+- Medical term simplification for patient-friendly answers
+
 ## 📊 Project Components
 
 ### 1. Medical Report Summarization

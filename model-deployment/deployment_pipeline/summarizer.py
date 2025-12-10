@@ -83,11 +83,40 @@ class MedicalSummarizer:
             logger.error(f"Failed to load model: {e}")
             raise e
         
-        # 3. Load RAG Components
-        logger.info("Loading RAG Embedder (BioBERT)...")
-        self.embedder = SentenceTransformer('dmis-lab/biobert-base-cased-v1.2')
-        self.build_knowledge_base()
-        self.create_retrieval_index()
+        # 3. Load RAG Components (with fallback)
+        logger.info("Loading RAG Embedder...")
+        self.embedder = None
+        self.retriever = None
+        self.kb_embeddings = None
+        
+        # Try BioBERT first, fallback to default model
+        try:
+            logger.info("Attempting to load BioBERT embedder...")
+            self.embedder = SentenceTransformer('dmis-lab/biobert-base-cased-v1.2')
+            logger.info("✅ BioBERT embedder loaded successfully")
+        except Exception as e:
+            logger.warning(f"BioBERT failed to load: {e}. Falling back to default model...")
+            try:
+                # Fallback to default sentence transformer model
+                self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+                logger.info("✅ Default embedder loaded successfully")
+            except Exception as fallback_error:
+                logger.error(f"Failed to load fallback embedder: {fallback_error}")
+                # Continue without embedder - RAG simplification will be skipped
+                logger.warning("⚠️ Continuing without embedder. RAG simplification will be disabled.")
+        
+        # Build knowledge base only if embedder is available
+        if self.embedder is not None:
+            try:
+                self.build_knowledge_base()
+                self.create_retrieval_index()
+                logger.info("✅ RAG components initialized")
+            except Exception as e:
+                logger.warning(f"Failed to build knowledge base: {e}. Continuing without RAG simplification.")
+                self.retriever = None
+                self.kb_embeddings = None
+        else:
+            logger.warning("⚠️ RAG components not available - simplification will be limited")
         
         # 4. Check API Key
         if "GEMINI_API_KEY" not in os.environ:
@@ -97,6 +126,10 @@ class MedicalSummarizer:
 
     def build_knowledge_base(self):
         """Builds the simplification dictionary."""
+        if self.embedder is None:
+            logger.warning("Cannot build knowledge base: embedder not available")
+            return
+        
         # Expanded list for production coverage
         self.medical_kb = [
             {"medical": "myocardial infarction MI", "simple": "heart attack", "context": "heart blockage"},
@@ -122,13 +155,27 @@ class MedicalSummarizer:
         ]
         
         # Pre-compute embeddings
-        texts = [f"{entry['medical']} {entry['context']}" for entry in self.medical_kb]
-        self.kb_embeddings = self.embedder.encode(texts)
+        try:
+            texts = [f"{entry['medical']} {entry['context']}" for entry in self.medical_kb]
+            self.kb_embeddings = self.embedder.encode(texts)
+            logger.info(f"✅ Knowledge base built with {len(self.medical_kb)} terms")
+        except Exception as e:
+            logger.error(f"Failed to encode knowledge base: {e}")
+            self.kb_embeddings = None
 
     def create_retrieval_index(self):
         """Creates the search index."""
-        self.retriever = NearestNeighbors(n_neighbors=5, metric='cosine')
-        self.retriever.fit(self.kb_embeddings)
+        if self.kb_embeddings is None:
+            logger.warning("Cannot create retrieval index: embeddings not available")
+            return
+        
+        try:
+            self.retriever = NearestNeighbors(n_neighbors=5, metric='cosine')
+            self.retriever.fit(self.kb_embeddings)
+            logger.info("✅ Retrieval index created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create retrieval index: {e}")
+            self.retriever = None
 
     def _call_gemini_api(self, prompt: str) -> str:
         """Securely calls Gemini API with error handling."""
@@ -232,10 +279,18 @@ class MedicalSummarizer:
         base_summary = self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
         
         # Step 3: RAG Simplification (Identify terms to simplify)
-        query_vec = self.embedder.encode(base_summary)
-        distances, indices = self.retriever.kneighbors([query_vec])
-        
-        relevant_terms = [self.medical_kb[idx] for idx in indices[0]]
+        relevant_terms = []
+        if self.embedder is not None and self.retriever is not None:
+            try:
+                query_vec = self.embedder.encode(base_summary)
+                distances, indices = self.retriever.kneighbors([query_vec])
+                relevant_terms = [self.medical_kb[idx] for idx in indices[0]]
+                logger.debug(f"Found {len(relevant_terms)} relevant medical terms to simplify")
+            except Exception as e:
+                logger.warning(f"RAG simplification failed: {e}. Continuing without term simplification.")
+                relevant_terms = []
+        else:
+            logger.debug("RAG components not available - skipping term simplification")
         
         # Step 4: Gemini Refinement
         sections = self.extract_key_sections(text)

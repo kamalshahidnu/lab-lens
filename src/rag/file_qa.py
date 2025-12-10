@@ -160,10 +160,13 @@ class FileQA:
             self.gemini = None
         
         # Initialize MedicalSummarizer for document summarization (lazy loading)
+        # Note: Summarizer is optional and won't block RAG system initialization
         self.summarizer = None
         self.summarizer_available = SUMMARIZER_AVAILABLE
         if self.summarizer_available:
-            logger.info("MedicalSummarizer will be loaded on first use")
+            logger.info("MedicalSummarizer will be loaded on first use (optional feature)")
+        else:
+            logger.info("MedicalSummarizer not available - document summarization will use Gemini fallback")
     
     def load_file(self, file_path: str) -> Dict[str, any]:
         """
@@ -630,18 +633,26 @@ ANSWER:"""
             }
     
     def _get_summarizer(self):
-        """Lazy load MedicalSummarizer"""
+        """Lazy load MedicalSummarizer with graceful error handling"""
         if not self.summarizer_available:
             return None
         
         if self.summarizer is None:
             try:
                 logger.info("Loading MedicalSummarizer for document summarization...")
+                # Try to load with CPU (required for Cloud Run)
+                # The summarizer will handle BioBERT fallback internally
                 self.summarizer = MedicalSummarizer(use_gpu=False)  # Use CPU for web app compatibility
-                logger.info("MedicalSummarizer loaded successfully")
-            except Exception as e:
-                logger.error(f"Failed to load MedicalSummarizer: {e}")
+                logger.info("✅ MedicalSummarizer loaded successfully")
+            except ImportError as e:
+                logger.error(f"Import error loading MedicalSummarizer: {e}. Missing dependencies?")
                 self.summarizer_available = False
+                return None
+            except Exception as e:
+                logger.error(f"Failed to load MedicalSummarizer: {e}", exc_info=True)
+                # Don't disable summarizer_available permanently - might be a temporary issue
+                # Just return None for this attempt
+                logger.warning("MedicalSummarizer failed to load, but will retry on next use")
                 return None
         
         return self.summarizer

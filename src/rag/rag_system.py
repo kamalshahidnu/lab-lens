@@ -108,17 +108,35 @@ class RAGSystem:
             # Use standard embedding model
             try:
                 logger.info(f"Loading embedding model: {embedding_model}")
-                self.embedding_model = SentenceTransformer(embedding_model)
+                # Set cache directory explicitly for Cloud Run
+                cache_dir = os.getenv('HF_HOME') or os.getenv('TRANSFORMERS_CACHE') or os.path.expanduser('~/.cache/huggingface')
+                logger.info(f"Using cache directory: {cache_dir}")
+                
+                self.embedding_model = SentenceTransformer(
+                    embedding_model,
+                    cache_folder=cache_dir
+                )
                 self.embedding_dim = self.embedding_model.get_sentence_embedding_dimension()
-                logger.info(f"Embedding model loaded. Dimension: {self.embedding_dim}")
+                logger.info(f"Embedding model loaded successfully. Dimension: {self.embedding_dim}")
+                
+                # Verify model works by encoding a test string
+                try:
+                    test_embedding = self.embedding_model.encode("test", convert_to_numpy=True)
+                    logger.info(f"Model verification successful. Test embedding shape: {test_embedding.shape}")
+                except Exception as verify_error:
+                    logger.warning(f"Model loaded but verification failed: {verify_error}")
+            except ImportError as e:
+                logger.error(f"Import error loading embedding model: {e}. Is sentence-transformers installed?")
+                self.embedding_model = None
+                self.embedding_dim = None
             except Exception as e:
-                logger.error(f"Failed to load embedding model: {e}")
+                logger.error(f"Failed to load embedding model: {e}", exc_info=True)
                 self.embedding_model = None
                 self.embedding_dim = None
         elif not use_biobert:
             self.embedding_model = None
             self.embedding_dim = None
-            logger.warning("Embedding model not available")
+            logger.error(f"Embedding model not available. SENTENCE_TRANSFORMERS_AVAILABLE={SENTENCE_TRANSFORMERS_AVAILABLE}, use_biobert={use_biobert}")
         
         # Initialize vector store
         self.index = None

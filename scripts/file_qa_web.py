@@ -368,13 +368,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-def initialize_qa_system(user_id: Optional[str] = None, use_biobert: bool = True):
+def initialize_qa_system(user_id: Optional[str] = None, use_biobert: bool = False):
     """
     Initialize the File QA system with optional user-specific vector database
 
     Args:
         user_id: Optional user ID for collection isolation
-        use_biobert: If True, use BioBERT for better medical document retrieval
+        use_biobert: If True, use BioBERT for better medical document retrieval (default: False for Cloud Run)
     """
     try:
         api_key = os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY')
@@ -384,26 +384,58 @@ def initialize_qa_system(user_id: Optional[str] = None, use_biobert: bool = True
             return None
 
         logger.info(f"Initializing QA system (use_biobert={use_biobert}, user_id={user_id})...")
-        qa_system = FileQA(
-            gemini_api_key=api_key,
-            use_biobert=use_biobert,  # Use BioBERT for medical text embeddings
-            use_vector_db=True,  # Enable ChromaDB for persistent storage
-            user_id=user_id,  # Use user_id for collection isolation
-            simplify_medical_terms=True  # Enable medical term simplification
-        )
-        logger.info("QA system initialized successfully")
+        
+        # Check if sentence-transformers is available
+        try:
+            from sentence_transformers import SentenceTransformer
+            logger.info("✅ sentence-transformers is available")
+        except ImportError as e:
+            logger.error(f"❌ sentence-transformers not available: {e}")
+            st.error("⚠️ Embedding library not available. Please contact administrator.")
+            return None
+        
+        # Try to initialize with BioBERT first if requested, otherwise use default
+        qa_system = None
+        if use_biobert:
+            try:
+                logger.info("Attempting to initialize with BioBERT...")
+                qa_system = FileQA(
+                    gemini_api_key=api_key,
+                    use_biobert=True,
+                    use_vector_db=True,
+                    user_id=user_id,
+                    simplify_medical_terms=True
+                )
+                # Verify embedding model is loaded
+                if qa_system.rag.embedding_model is None:
+                    raise ValueError("BioBERT embedding model failed to load")
+                logger.info("✅ QA system initialized with BioBERT successfully")
+            except Exception as biobert_error:
+                logger.warning(f"BioBERT initialization failed: {biobert_error}. Falling back to default model...")
+                use_biobert = False
+        
+        if not qa_system:
+            # Use default embedding model (all-MiniLM-L6-v2)
+            logger.info("Initializing with default embedding model (all-MiniLM-L6-v2)...")
+            qa_system = FileQA(
+                gemini_api_key=api_key,
+                use_biobert=False,  # Use default model
+                use_vector_db=True,
+                user_id=user_id,
+                simplify_medical_terms=True
+            )
+            # Verify embedding model is loaded
+            if qa_system.rag.embedding_model is None:
+                error_msg = "Default embedding model failed to load. Check logs for details."
+                logger.error(error_msg)
+                st.error(f"⚠️ {error_msg}")
+                return None
+            logger.info("✅ QA system initialized with default model successfully")
+        
         return qa_system
     except Exception as e:
         logger.error(f"Failed to initialize QA system: {e}", exc_info=True)
         st.error(f"⚠️ System initialization failed: {str(e)}")
-        # Try falling back to non-BioBERT model
-        if use_biobert:
-            logger.warning("Falling back to standard embedding model...")
-            try:
-                return initialize_qa_system(user_id=user_id, use_biobert=False)
-            except Exception as fallback_error:
-                logger.error(f"Fallback initialization also failed: {fallback_error}")
-                return None
         return None
 
 

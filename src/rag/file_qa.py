@@ -23,11 +23,18 @@ try:
     FAISS_AVAILABLE = True
 except ImportError:
     FAISS_AVAILABLE = False
-from src.training.gemini_inference import GeminiInference
 from src.utils.logging_config import get_logger
 from src.utils.error_handling import ErrorHandler, safe_execute
 
 logger = get_logger(__name__)
+
+_GEMINI_INFERENCE_IMPORT_ERROR = None
+try:
+    # Preferred path in this repo, but may be absent in some deploy builds.
+    from src.training.gemini_inference import GeminiInference  # type: ignore
+except ImportError as e:
+    GeminiInference = None  # type: ignore
+    _GEMINI_INFERENCE_IMPORT_ERROR = e
 
 # Try to import medical utilities
 try:
@@ -65,6 +72,110 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
     logger.warning("google-generativeai not available for direct API calls")
+
+# If training module isn't present (common in slim deploy images), provide a
+# minimal GeminiInference compatible with how FileQA uses it.
+if GeminiInference is None:
+    if GEMINI_AVAILABLE:
+        class GeminiInference:  # type: ignore
+            """
+            Minimal Gemini inference wrapper used by FileQA.
+
+            FileQA expects:
+            - `GeminiInference(model_name=...)` constructor
+            - `self.model.model_name` for selecting the GenerativeModel
+            - Optional `answer_question(question, context)` for fallback paths
+            """
+
+            def __init__(self, model_name: str = "gemini-2.0-flash-exp", api_key: Optional[str] = None):
+                api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+                if not api_key:
+                    raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY environment variable required")
+
+                genai.configure(api_key=api_key)
+                try:
+                    self.model = genai.GenerativeModel(model_name)
+                except Exception:
+                    # Conservative fallback for older availability.
+                    self.model = genai.GenerativeModel("gemini-1.5-pro")
+
+            def answer_question(self, question: str, context: Optional[str] = None) -> str:
+                prompt = f"""Based on the following context, answer the question.
+
+Context:
+{context or ""}
+
+Question: {question}
+
+Answer:"""
+                response = self.model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.3,
+                        max_output_tokens=2048,
+                    ),
+                )
+                return (response.text or "").strip()
+    else:
+        # Leave GeminiInference undefined so initialization fails with a clear message.
+        logger.warning(
+            "GeminiInference unavailable (missing src.training and google-generativeai). "
+            f"Original import error: {_GEMINI_INFERENCE_IMPORT_ERROR}"
+        )
+
+
+def get_language_instruction(question: str) -> str:
+    """
+    Detect if question is in English or another language.
+    Only add language matching instruction for non-English questions.
+    
+    Args:
+        question: User's question text
+        
+    Returns:
+        Language instruction string (empty for English, instruction for other languages)
+    """
+    question_lower = question.lower().strip()
+    
+    # Check if text contains non-ASCII characters (native script)
+    has_native_script = any(ord(char) > 127 for char in question)
+    
+    # Common English question words and patterns
+    english_indicators = [
+        'what', 'when', 'where', 'why', 'how', 'who', 'which', 'whose',
+        'is', 'are', 'was', 'were', 'do', 'does', 'did', 'can', 'will', 'would', 'should', 'could',
+        'the', 'a', 'an', 'this', 'that', 'these', 'those',
+        'and', 'or', 'but', 'with', 'from', 'to', 'for', 'of', 'in', 'on', 'at',
+        'patient', 'disease', 'illness', 'symptoms', 'diagnosis', 'treatment', 'admitted', 'discharge',
+        'report', 'medical', 'hospital', 'doctor', 'condition'
+    ]
+    
+    # Check if question contains English indicators
+    has_english_indicators = any(word in question_lower for word in english_indicators)
+    
+    # Check for Hindi transliteration indicators (only if no English indicators)
+    hindi_transliteration_words = ['kya', 'thi', 'hai', 'hain', 'aap', 'tum', 'kaise', 'kab', 'kahan', 
+                                   'kyun', 'kaun', 'kis', 'kisi', 'sab', 'bahut', 'bhi', 'mein', 'ko', 'se',
+                                   'nahi', 'haan', 'batao', 'batayein', 'dikhao', 'bimari', 'mareez']
+    has_hindi_indicators = any(word in question_lower for word in hindi_transliteration_words)
+    
+    # If it has native script, it's definitely not English
+    if has_native_script:
+        return """IMPORTANT: Respond in the EXACT SAME LANGUAGE and SAME SCRIPT FORMAT as the patient's question.
+Do NOT translate to English. Use the same native script characters."""
+    
+    # If it has Hindi transliteration indicators but no English indicators, it's likely Hindi
+    elif has_hindi_indicators and not has_english_indicators:
+        return """IMPORTANT: Respond in the EXACT SAME LANGUAGE and SAME TRANSLITERATION FORMAT as the patient's question.
+If the question is in transliteration (e.g., "kya bimari thi"), respond in the same transliteration format, NOT in English."""
+    
+    # If it has English indicators, it's English - no special instruction needed
+    elif has_english_indicators:
+        return ""  # Empty - let Gemini respond normally in English
+    
+    # Default: if we're not sure, don't add instruction (let Gemini decide)
+    else:
+        return ""  # Empty - default to English
 
 
 class FileQA:
@@ -131,6 +242,10 @@ class FileQA:
         self.vector_db = None
         if self.use_vector_db:
             try:
+                # Check if embedding model is available first
+                if not self.rag.embedding_model:
+                    raise ValueError("Embedding model not initialized - cannot create vector database")
+                
                 # Create embedding function wrapper for ChromaDB
                 def embedding_fn(texts):
                     if not self.rag.embedding_model:
@@ -140,14 +255,18 @@ class FileQA:
                 # Use user-specific collection if user_id provided
                 collection = f"{collection_name}_{user_id}" if user_id else collection_name
                 
+                # Ensure persist directory exists
+                persist_dir = Path("models/vector_db")
+                persist_dir.mkdir(parents=True, exist_ok=True)
+                
                 self.vector_db = VectorDatabase(
-                    persist_directory="models/vector_db",
+                    persist_directory=str(persist_dir),
                     collection_name=collection,
                     embedding_function=embedding_fn
                 )
-                logger.info(f"Vector database initialized: {collection}")
+                logger.info(f"✅ Vector database initialized: {collection}")
             except Exception as e:
-                logger.warning(f"Failed to initialize vector database: {e}. Using in-memory storage.")
+                logger.warning(f"⚠️ Failed to initialize vector database: {e}. Using in-memory storage.", exc_info=True)
                 self.use_vector_db = False
         
         # Initialize Gemini for answer generation
@@ -540,42 +659,109 @@ class FileQA:
         # Generate answer using Gemini with hybrid approach
         logger.info("Generating answer using Gemini (hybrid: document + general knowledge)...")
         try:
+            # Get language instruction for multilingual support
+            language_instruction = get_language_instruction(question)
+            
             # Create a prompt that uses document if available, but allows general knowledge
             if document_context and has_good_matches:
                 # Strong document match - prioritize document
-                prompt = f"""You are a helpful medical assistant. Answer the patient's question based on the information from their medical report/document below. If the document doesn't contain enough information, you may supplement with your general medical knowledge, but clearly indicate what comes from the document vs. general knowledge.
+                prompt_parts = ["""You are a helpful medical assistant.
 
+Answer the patient's question based on the information from their medical report/document below. If the document doesn't contain enough information, you may supplement with your general medical knowledge, but clearly indicate what comes from the document vs. general knowledge."""]
+                
+                # Only add language instruction if it's not empty (i.e., not English)
+                if language_instruction:
+                    prompt_parts.append(f"""
+IMPORTANT: Even though the document content below may be in English, you MUST respond in the SAME LANGUAGE and SAME SCRIPT FORMAT as the patient's question.
+
+{language_instruction}""")
+                
+                prompt_parts.append(f"""
 DOCUMENT CONTENT:
 {document_context}
 
-PATIENT'S QUESTION: {question}
+PATIENT'S QUESTION: {question}""")
+                
+                if language_instruction:
+                    prompt_parts.append(f"""
+{language_instruction}
 
-ANSWER:"""
+Your answer must be in the same language and script format as the question above. Translate the information from the document into the question's language format.""")
+                
+                prompt_parts.append("""
+ANSWER:""")
+                
+                prompt = "\n".join(prompt_parts)
             elif document_context:
                 # Weak document match - use document as context but allow general knowledge
-                prompt = f"""You are a helpful medical assistant. The patient has asked a question about their medical report. The document content below may or may not directly answer the question. Please:
+                prompt_parts = ["""You are a helpful medical assistant.
+
+The patient has asked a question about their medical report. The document content below may or may not directly answer the question. Please:
 1. First try to answer based on the document if relevant
 2. If the document doesn't contain the answer, use your general medical knowledge to help
-3. Clearly indicate when you're using general knowledge vs. document information
+3. Clearly indicate when you're using general knowledge vs. document information"""]
+                
+                # Only add language instruction if it's not empty (i.e., not English)
+                if language_instruction:
+                    prompt_parts.append(f"""
+IMPORTANT: Even though the document content below may be in English, you MUST respond in the SAME LANGUAGE and SAME SCRIPT FORMAT as the patient's question.
 
+{language_instruction}""")
+                
+                prompt_parts.append(f"""
 DOCUMENT CONTENT (may be partially relevant):
 {document_context}
 
-PATIENT'S QUESTION: {question}
+PATIENT'S QUESTION: {question}""")
+                
+                if language_instruction:
+                    prompt_parts.append(f"""
+{language_instruction}
 
-ANSWER:"""
+Your answer must be in the same language and script format as the question above. Translate the information from the document into the question's language format.""")
+                
+                prompt_parts.append("""
+ANSWER:""")
+                
+                prompt = "\n".join(prompt_parts)
             else:
                 # No document context - use general knowledge
-                prompt = f"""You are a helpful medical assistant. The patient has asked a medical question. Please answer using your general medical knowledge. Be clear, accurate, and helpful.
+                prompt_parts = ["""You are a helpful medical assistant.
 
-PATIENT'S QUESTION: {question}
+The patient has asked a medical question. Please answer using your general medical knowledge. Be clear, accurate, and helpful.
 
-ANSWER:"""
+PATIENT'S QUESTION: {question}""".format(question=question)]
+                
+                # Only add language instruction if it's not empty (i.e., not English)
+                if language_instruction:
+                    prompt_parts.append(f"""
+{language_instruction}
+
+Your answer must be in the same language and script format as the question above.""")
+                
+                prompt_parts.append("""
+ANSWER:""")
+                
+                prompt = "\n".join(prompt_parts)
             
             # Generate response using Gemini
             if GEMINI_AVAILABLE:
                 # Use direct API call for more control
-                model = genai.GenerativeModel(self.gemini.model.model_name)
+                # Add system instruction only if language instruction is provided (non-English)
+                try:
+                    if language_instruction:
+                        model = genai.GenerativeModel(
+                            self.gemini.model.model_name,
+                            system_instruction=language_instruction
+                        )
+                    else:
+                        # For English questions, use default model without system instruction
+                        model = genai.GenerativeModel(self.gemini.model.model_name)
+                except Exception as e:
+                    # If system_instruction not supported, use model without it
+                    logger.debug(f"System instruction not supported, using default model: {e}")
+                    model = genai.GenerativeModel(self.gemini.model.model_name)
+                
                 response = model.generate_content(
                     prompt,
                     generation_config=genai.types.GenerationConfig(

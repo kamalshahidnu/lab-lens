@@ -14,11 +14,75 @@ from datetime import datetime
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from src.rag.rag_system import RAGSystem
-from src.training.gemini_inference import GeminiInference
 from src.utils.logging_config import get_logger
 from src.utils.error_handling import ErrorHandler, safe_execute
 
 logger = get_logger(__name__)
+
+_GEMINI_INFERENCE_IMPORT_ERROR = None
+try:
+    from src.training.gemini_inference import GeminiInference  # type: ignore
+except ImportError as e:
+    GeminiInference = None  # type: ignore
+    _GEMINI_INFERENCE_IMPORT_ERROR = e
+
+if GeminiInference is None:
+    # Minimal fallback to keep deployments working even without src.training/.
+    try:
+        import google.generativeai as genai
+
+        class _GeminiModelWrapper:
+            def __init__(self, model_name: str):
+                self.model_name = model_name
+                try:
+                    self.model = genai.GenerativeModel(model_name)
+                except Exception:
+                    self.model_name = "gemini-1.5-pro"
+                    self.model = genai.GenerativeModel(self.model_name)
+
+            def answer_question(self, question: str, context: str, temperature: float = 0.3) -> str:
+                prompt = f"""Answer the patient's question based ONLY on the context below.
+
+CONTEXT:
+{context}
+
+QUESTION:
+{question}
+
+ANSWER:"""
+                resp = self.model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=temperature,
+                        max_output_tokens=2048,
+                    ),
+                )
+                return (resp.text or "").strip()
+
+            def summarize(self, prompt: str, max_length: int = 500) -> str:
+                # `max_length` is best-effort; Gemini uses token limits.
+                resp = self.model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.3,
+                        max_output_tokens=2048,
+                    ),
+                )
+                return (resp.text or "").strip()
+
+        class GeminiInference:  # type: ignore
+            def __init__(self, model_name: str = "gemini-2.0-flash-exp", api_key: Optional[str] = None):
+                api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+                if not api_key:
+                    raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY environment variable required")
+                genai.configure(api_key=api_key)
+                self.model = _GeminiModelWrapper(model_name)
+
+    except Exception as e:
+        raise ImportError(
+            "Could not import GeminiInference (missing src.training) and could not initialize fallback "
+            f"google-generativeai client. Original: {_GEMINI_INFERENCE_IMPORT_ERROR}; fallback error: {e}"
+        )
 
 
 class PatientQA:

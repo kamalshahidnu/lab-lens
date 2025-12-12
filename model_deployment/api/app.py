@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from model_deployment.api.summarizer import MedicalSummarizer
 import logging
 import os
 import threading
@@ -58,6 +57,9 @@ async def load_model():
 
     try:
         logger.info("Preloading Medical Summarizer (PRELOAD_SUMMARIZER=true)...")
+        # Import lazily so startup isn't dominated by heavy deps unless explicitly requested.
+        from model_deployment.api.summarizer import MedicalSummarizer
+
         summarizer = MedicalSummarizer(use_gpu=False)
         logger.info("✅ Summarizer preloaded successfully!")
     except Exception as e:
@@ -66,7 +68,7 @@ async def load_model():
         summarizer = None
 
 
-def get_or_init_summarizer() -> MedicalSummarizer:
+def get_or_init_summarizer():
     """Thread-safe lazy initialization of the summarizer."""
     global summarizer
     if summarizer is not None:
@@ -76,6 +78,9 @@ def get_or_init_summarizer() -> MedicalSummarizer:
         if summarizer is not None:
             return summarizer
         logger.info("Lazy-loading Medical Summarizer...")
+        # Import here to avoid importing torch/transformers during container startup.
+        from model_deployment.api.summarizer import MedicalSummarizer
+
         summarizer = MedicalSummarizer(use_gpu=False)
         logger.info("✅ Summarizer loaded successfully (lazy).")
         return summarizer

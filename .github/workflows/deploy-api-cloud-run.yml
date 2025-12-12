@@ -29,6 +29,7 @@ env:
 jobs:
   deploy:
     name: Build and Deploy API to Cloud Run
+    if: github.repository == 'kamalshahidnu/lab-lens'
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'production' }}
 
@@ -62,13 +63,25 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Build and Push Container
+      - name: Configure Docker auth (gcr.io)
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build and Push Container (Docker)
+        env:
+          IMAGE_SHA: gcr.io/${{ secrets.GCP_PROJECT_ID }}/lab-lens-api:${{ github.sha }}
+          IMAGE_LATEST: gcr.io/${{ secrets.GCP_PROJECT_ID }}/lab-lens-api:latest
+          SKIP_MODEL_DOWNLOAD: "true"
         run: |
-          echo "🔨 Building API container image..."
-          gcloud builds submit \
-            --config=infrastructure/docker/cloudbuild-api.yaml \
-            --project=$PROJECT_ID \
-            --timeout=20m
+          echo "🔨 Building API container image (Docker)..."
+          docker build \
+            --build-arg SKIP_MODEL_DOWNLOAD=${SKIP_MODEL_DOWNLOAD} \
+            -f infrastructure/docker/Dockerfile.api \
+            -t "${IMAGE_SHA}" \
+            -t "${IMAGE_LATEST}" \
+            .
+          echo "📤 Pushing images..."
+          docker push "${IMAGE_SHA}"
+          docker push "${IMAGE_LATEST}"
 
       - name: Deploy to Cloud Run
         run: |
@@ -81,7 +94,7 @@ jobs:
           fi
           
           gcloud run deploy $SERVICE_NAME \
-            --image gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+            --image gcr.io/$PROJECT_ID/$SERVICE_NAME:${{ github.sha }} \
             --platform managed \
             --region $REGION \
             --project $PROJECT_ID \
@@ -95,7 +108,7 @@ jobs:
             --set-env-vars HF_HOME=/root/.cache/huggingface,TRANSFORMERS_CACHE=/root/.cache/huggingface \
             --set-secrets GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_API_KEY=gemini-api-key:latest || \
             gcloud run deploy $SERVICE_NAME \
-              --image gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+              --image gcr.io/$PROJECT_ID/$SERVICE_NAME:${{ github.sha }} \
               --platform managed \
               --region $REGION \
               --project $PROJECT_ID \
@@ -150,3 +163,5 @@ jobs:
               repo: context.repo.repo,
               body: `🚀 API Backend deployed to Cloud Run!\n\n🌐 **API URL**: ${url}\n📚 **API Docs**: ${url}/docs\n🔍 **Health Check**: ${url}/health`
             });
+
+

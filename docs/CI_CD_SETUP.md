@@ -108,18 +108,18 @@ Add the following secrets:
 
 #### Required for Deployment:
 - `GCP_PROJECT_ID`: Your Google Cloud project ID
-  ```
-  gen-lang-client-0006590375
-  ```
+ ```
+ gen-lang-client-0006590375
+ ```
 
 - `GCP_SA_KEY`: Service account JSON key
-  ```json
-  {
-    "type": "service_account",
-    "project_id": "...",
-    ...
-  }
-  ```
+ ```json
+ {
+  "type": "service_account",
+  "project_id": "...",
+  ...
+ }
+ ```
 
 #### Optional:
 - `GEMINI_API_KEY`: For model training and API features
@@ -145,24 +145,24 @@ Create a service account with these roles:
 ```bash
 # Create service account
 gcloud iam service-accounts create github-actions \
-  --display-name="GitHub Actions Service Account"
+ --display-name="GitHub Actions Service Account"
 
 # Grant roles
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/run.admin"
+ --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+ --role="roles/run.admin"
 
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
+ --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+ --role="roles/iam.serviceAccountUser"
 
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
+ --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+ --role="roles/storage.admin"
 
 # Create and download key
 gcloud iam service-accounts keys create key.json \
-  --iam-account=github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com
+ --iam-account=github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com
 ```
 
 Copy the contents of `key.json` to GitHub secret `GCP_SA_KEY`.
@@ -171,9 +171,9 @@ Copy the contents of `key.json` to GitHub secret `GCP_SA_KEY`.
 
 ```bash
 gcloud services enable \
-  cloudbuild.googleapis.com \
-  run.googleapis.com \
-  containerregistry.googleapis.com
+ cloudbuild.googleapis.com \
+ run.googleapis.com \
+ containerregistry.googleapis.com
 ```
 
 ## Workflow Triggers
@@ -204,13 +204,13 @@ All workflows support `workflow_dispatch` for manual execution:
 ```bash
 # Check Cloud Run service status
 gcloud run services describe lab-lens-web \
-  --region us-central1 \
-  --project YOUR_PROJECT_ID
+ --region us-central1 \
+ --project YOUR_PROJECT_ID
 
 # View logs
 gcloud run services logs tail lab-lens-web \
-  --region us-central1 \
-  --project YOUR_PROJECT_ID
+ --region us-central1 \
+ --project YOUR_PROJECT_ID
 ```
 
 ## Troubleshooting

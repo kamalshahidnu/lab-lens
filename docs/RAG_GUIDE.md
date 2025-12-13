@@ -10,13 +10,13 @@ The RAG (Retrieval-Augmented Generation) system enables patients to ask question
 
 ## Features
 
-- ✅ **Semantic Search**: Finds relevant sections in discharge summaries using embeddings
-- ✅ **Context-Aware Answers**: Uses retrieved context to generate accurate answers
-- ✅ **Patient-Friendly**: Answers in simple, understandable language
-- ✅ **Source Citations**: Shows which sections of the report were used
-- ✅ **Multi-Question Support**: Answer multiple questions at once
-- ✅ **Patient Filtering**: Filter questions to specific patient records
-- ✅ **Single-Patient Mode**: Load only one patient's data for faster, more secure Q&A
+- **Semantic Search**: Finds relevant sections in discharge summaries using embeddings
+- **Context-Aware Answers**: Uses retrieved context to generate accurate answers
+- **Patient-Friendly**: Answers in simple, understandable language
+- **Source Citations**: Shows which sections of the report were used
+- **Multi-Question Support**: Answer multiple questions at once
+- **Patient Filtering**: Filter questions to specific patient records
+- **Single-Patient Mode**: Load only one patient's data for faster, more secure Q&A
 
 ## Quick Start
 
@@ -117,18 +117,18 @@ Patients can ask questions like:
 
 ```
 Patient Question
-      ↓
-  Embedding Model
-      ↓
-  Vector Search (FAISS/numpy)
-      ↓
-  Retrieve Relevant Chunks
-      ↓
-  Build Context
-      ↓
-  Gemini AI (Answer Generation)
-      ↓
-  Patient-Friendly Answer
+   ↓
+ Embedding Model
+   ↓
+ Vector Search (FAISS/numpy)
+   ↓
+ Retrieve Relevant Chunks
+   ↓
+ Build Context
+   ↓
+ Gemini AI (Answer Generation)
+   ↓
+ Patient-Friendly Answer
 ```
 
 ## Advanced Usage
@@ -142,8 +142,8 @@ from src.rag.patient_qa import PatientQA
 
 # Single-patient mode (recommended)
 qa = PatientQA(
-    data_path="data_pipeline/data/processed/processed_discharge_summaries.csv",
-    hadm_id=130656  # Loads only this patient's data
+  data_path="data_pipeline/data/processed/processed_discharge_summaries.csv",
+  hadm_id=130656 # Loads only this patient's data
 )
 
 # Ask questions (no hadm_id needed - already filtered)
@@ -152,13 +152,13 @@ print(result['answer'])
 
 # All records mode
 qa = PatientQA(
-    data_path="data_pipeline/data/processed/processed_discharge_summaries.csv"
+  data_path="data_pipeline/data/processed/processed_discharge_summaries.csv"
 )
 
 # Ask with patient filter
 result = qa.ask_question(
-    question="What are my diagnoses?",
-    hadm_id=130656  # Optional: filter to specific patient
+  question="What are my diagnoses?",
+  hadm_id=130656 # Optional: filter to specific patient
 )
 ```
 
@@ -168,10 +168,10 @@ result = qa.ask_question(
 from src.rag.patient_qa import PatientQA
 
 qa = PatientQA(
-    data_path="path/to/data.csv",
-    embedding_model="all-mpnet-base-v2",  # Different embedding model
-    gemini_model="gemini-1.5-pro",        # Different Gemini model
-    rag_k=10  # Retrieve more chunks for context
+  data_path="path/to/data.csv",
+  embedding_model="all-mpnet-base-v2", # Different embedding model
+  gemini_model="gemini-1.5-pro",    # Different Gemini model
+  rag_k=10 # Retrieve more chunks for context
 )
 ```
 
@@ -182,23 +182,23 @@ from src.rag.rag_system import RAGSystem
 
 # Initialize RAG system
 rag = RAGSystem(
-    embedding_model="all-MiniLM-L6-v2",
-    chunk_size=500,
-    chunk_overlap=50,
-    data_path="data_pipeline/data/processed/processed_discharge_summaries.csv",
-    hadm_id=130656  # Single-patient mode
+  embedding_model="all-MiniLM-L6-v2",
+  chunk_size=500,
+  chunk_overlap=50,
+  data_path="data_pipeline/data/processed/processed_discharge_summaries.csv",
+  hadm_id=130656 # Single-patient mode
 )
 
 # Retrieve relevant chunks
 results = rag.retrieve(
-    query="What medications are prescribed?",
-    k=5,
-    min_score=0.3  # Minimum similarity threshold
+  query="What medications are prescribed?",
+  k=5,
+  min_score=0.3 # Minimum similarity threshold
 )
 
 for result in results:
-    print(f"Score: {result['score']:.3f}")
-    print(f"Chunk: {result['chunk'][:100]}...")
+  print(f"Score: {result['score']:.3f}")
+  print(f"Chunk: {result['chunk'][:100]}...")
 ```
 
 ## Configuration Options
@@ -220,8 +220,8 @@ Default settings:
 Adjust in `RAGSystem`:
 ```python
 rag = RAGSystem(
-    chunk_size=750,      # Larger chunks
-    chunk_overlap=100    # More overlap
+  chunk_size=750,   # Larger chunks
+  chunk_overlap=100  # More overlap
 )
 ```
 
@@ -229,9 +229,9 @@ rag = RAGSystem(
 
 ```python
 results = rag.retrieve(
-    query="question",
-    k=10,                # Number of chunks to retrieve
-    min_score=0.4,       # Minimum similarity score (0-1)
+  query="question",
+  k=10,        # Number of chunks to retrieve
+  min_score=0.4,    # Minimum similarity score (0-1)
 )
 ```
 
@@ -324,8 +324,8 @@ python scripts/patient_qa_single.py --hadm-id 130656
 ### 2. Clear Questions
 
 Encourage patients to ask clear, specific questions:
-- ✅ "What are my discharge medications?"
-- ❌ "meds?"
+- "What are my discharge medications?"
+- "meds?"
 
 ### 3. Multiple Follow-ups
 
@@ -352,19 +352,19 @@ qa_system = PatientQA()
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
-    data = request.json
-    question = data.get('question')
-    hadm_id = data.get('hadm_id')
-    
-    # Use single-patient mode if hadm_id provided
-    if hadm_id:
-        qa_system = PatientQA(hadm_id=hadm_id)
-    
-    result = qa_system.ask_question(question)
-    return jsonify(result)
+  data = request.json
+  question = data.get('question')
+  hadm_id = data.get('hadm_id')
+ 
+  # Use single-patient mode if hadm_id provided
+  if hadm_id:
+    qa_system = PatientQA(hadm_id=hadm_id)
+ 
+  result = qa_system.ask_question(question)
+  return jsonify(result)
 
 if __name__ == '__main__':
-    app.run()
+  app.run()
 ```
 
 ### Batch Processing
@@ -372,19 +372,19 @@ if __name__ == '__main__':
 ```python
 from src.rag.patient_qa import PatientQA
 
-qa = PatientQA(hadm_id=130656)  # Single-patient mode
+qa = PatientQA(hadm_id=130656) # Single-patient mode
 
 questions = [
-    "What are my diagnoses?",
-    "What medications do I need?",
-    "When is my follow-up?"
+  "What are my diagnoses?",
+  "What medications do I need?",
+  "When is my follow-up?"
 ]
 
 results = qa.ask_multiple_questions(questions)
 
 for question, result in zip(questions, results):
-    print(f"Q: {question}")
-    print(f"A: {result['answer']}\n")
+  print(f"Q: {question}")
+  print(f"A: {result['answer']}\n")
 ```
 
 ## Related Documentation

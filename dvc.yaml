@@ -1,46 +1,46 @@
 stages:
-  preprocessing:
-    cmd: python data_pipeline/scripts/preprocessing.py
-    deps:
-      - data_pipeline/scripts/preprocessing.py
-      - data_pipeline/configs/pipeline_config.json
-      - data_pipeline/data/raw/mimic_discharge_labs.csv
-    outs:
-      - data_pipeline/data/processed/processed_discharge_summaries.csv
-      - data_pipeline/data/processed/preprocessing_report.csv
-  
-  validation:
-    cmd: python data_pipeline/scripts/validation.py
-    deps:
-      - data_pipeline/scripts/validation.py
-      - data_pipeline/data/processed/processed_discharge_summaries.csv
-    outs:
-      - data_pipeline/logs/validation_report.json
-      - data_pipeline/logs/validation_summary.csv
-  
-  feature_engineering:
-    cmd: python data_pipeline/scripts/feature_engineering.py
-    deps:
-      - data_pipeline/scripts/feature_engineering.py
-      - data_pipeline/data/processed/processed_discharge_summaries.csv
-    outs:
-      - data_pipeline/data/processed/mimic_features.csv
-  
-  bias_detection:
-    cmd: python data_pipeline/scripts/bias_detection.py
-    deps:
-      - data_pipeline/scripts/bias_detection.py
-      - data_pipeline/data/processed/mimic_features.csv
-    outs:
-      - data_pipeline/logs/bias_report.json
-      - data_pipeline/logs/bias_summary.csv
-  
-  bias_mitigation:
-    cmd: python data_pipeline/scripts/automated_bias_handler.py
-    deps:
-      - data_pipeline/scripts/automated_bias_handler.py
-      - data_pipeline/logs/bias_report.json
-      - data_pipeline/data/processed/mimic_features.csv
-    outs:
-      - data_pipeline/data/processed/mimic_features_mitigated.csv
-      - data_pipeline/logs/bias_mitigation_report.json
+ preprocessing:
+  cmd: python data_pipeline/scripts/preprocessing.py
+  deps:
+   - data_pipeline/scripts/preprocessing.py
+   - data_pipeline/configs/pipeline_config.json
+   - data_pipeline/data/raw/mimic_discharge_labs.csv
+  outs:
+   - data_pipeline/data/processed/processed_discharge_summaries.csv
+   - data_pipeline/data/processed/preprocessing_report.csv
+
+ validation:
+  cmd: python data_pipeline/scripts/validation.py
+  deps:
+   - data_pipeline/scripts/validation.py
+   - data_pipeline/data/processed/processed_discharge_summaries.csv
+  outs:
+   - data_pipeline/logs/validation_report.json
+   - data_pipeline/logs/validation_summary.csv
+
+ feature_engineering:
+  cmd: python data_pipeline/scripts/feature_engineering.py
+  deps:
+   - data_pipeline/scripts/feature_engineering.py
+   - data_pipeline/data/processed/processed_discharge_summaries.csv
+  outs:
+   - data_pipeline/data/processed/mimic_features.csv
+
+ bias_detection:
+  cmd: python data_pipeline/scripts/bias_detection.py
+  deps:
+   - data_pipeline/scripts/bias_detection.py
+   - data_pipeline/data/processed/mimic_features.csv
+  outs:
+   - data_pipeline/logs/bias_report.json
+   - data_pipeline/logs/bias_summary.csv
+
+ bias_mitigation:
+  cmd: python data_pipeline/scripts/automated_bias_handler.py
+  deps:
+   - data_pipeline/scripts/automated_bias_handler.py
+   - data_pipeline/logs/bias_report.json
+   - data_pipeline/data/processed/mimic_features.csv
+  outs:
+   - data_pipeline/data/processed/mimic_features_mitigated.csv
+   - data_pipeline/logs/bias_mitigation_report.json

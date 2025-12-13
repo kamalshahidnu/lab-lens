@@ -22,28 +22,28 @@ Configure these in: **Settings → Secrets and variables → Actions**
 **File:** `.github/workflows/ci.yml`
 
 Runs on every PR and push to main/develop:
-- ✅ Code formatting checks (Black, isort)
-- ✅ Linting (flake8)
-- ✅ Unit tests (Python 3.11 & 3.12)
-- ✅ Integration tests
-- ✅ Security scanning (Bandit)
+- Code formatting checks (Black, isort)
+- Linting (flake8)
+- Unit tests (Python 3.11 & 3.12)
+- Integration tests
+- Security scanning (Bandit)
 
 ### 2. Build and Test
 **File:** `.github/workflows/build-and-test.yml`
 
 Validates Docker builds:
-- ✅ Builds Docker image
-- ✅ Tests Docker image
-- ✅ Validates deployment scripts
+- Builds Docker image
+- Tests Docker image
+- Validates deployment scripts
 
 ### 3. Deploy to Cloud Run
 **File:** `.github/workflows/deploy-cloud-run.yml`
 
 Deploys to Google Cloud Run:
-- ✅ Builds container image
-- ✅ Pushes to GCR
-- ✅ Deploys to Cloud Run
-- ✅ Health check validation
+- Builds container image
+- Pushes to GCR
+- Deploys to Cloud Run
+- Health check validation
 
 **Triggers:**
 - Push to `main` branch
@@ -53,24 +53,24 @@ Deploys to Google Cloud Run:
 **File:** `.github/workflows/data-pipeline-ci.yml`
 
 Tests data preprocessing:
-- ✅ Preprocessing tests
-- ✅ Code linting
-- ✅ Import validation
+- Preprocessing tests
+- Code linting
+- Import validation
 
 ### 5. Model Training CI
 **File:** `.github/workflows/model-training-ci.yml`
 
 Validates model development:
-- ✅ Model development tests
-- ✅ MLflow validation
-- ✅ Optional model training
+- Model development tests
+- MLflow validation
+- Optional model training
 
 ### 6. Release
 **File:** `.github/workflows/release.yml`
 
 Creates releases and deploys:
-- ✅ Creates GitHub release
-- ✅ Deploys to production
+- Creates GitHub release
+- Deploys to production
 
 **Triggers:**
 - Tag push (e.g., `v1.0.0`)
@@ -80,15 +80,15 @@ Creates releases and deploys:
 **File:** `.github/workflows/schedule-tests.yml`
 
 Runs nightly test suite:
-- ✅ Full test coverage
-- ✅ Daily at 2 AM UTC
+- Full test coverage
+- Daily at 2 AM UTC
 
 ### 8. Dependency Review
 **File:** `.github/workflows/dependency-review.yml`
 
 Reviews dependencies in PRs:
-- ✅ Security vulnerability checks
-- ✅ Dependency updates
+- Security vulnerability checks
+- Dependency updates
 
 ## 🔧 Setup Instructions
 
@@ -97,47 +97,47 @@ Reviews dependencies in PRs:
 ```bash
 # Create service account
 gcloud iam service-accounts create github-actions \
-  --display-name="GitHub Actions"
+ --display-name="GitHub Actions"
 
 # Grant required roles
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/run.admin"
+ --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+ --role="roles/run.admin"
 
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
+ --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+ --role="roles/iam.serviceAccountUser"
 
 gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
+ --member="serviceAccount:github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+ --role="roles/storage.admin"
 
 # Create and download key
 gcloud iam service-accounts keys create key.json \
-  --iam-account=github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com
+ --iam-account=github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com
 ```
 
 ### Step 2: Add GitHub Secrets
 
 1. Go to repository → **Settings** → **Secrets and variables** → **Actions**
 2. Add secrets:
-   - `GCP_PROJECT_ID`: Your project ID
-   - `GCP_SA_KEY`: Contents of `key.json` file
+  - `GCP_PROJECT_ID`: Your project ID
+  - `GCP_SA_KEY`: Contents of `key.json` file
 
 ### Step 3: Enable GCP APIs
 
 ```bash
 gcloud services enable \
-  cloudbuild.googleapis.com \
-  run.googleapis.com \
-  containerregistry.googleapis.com
+ cloudbuild.googleapis.com \
+ run.googleapis.com \
+ containerregistry.googleapis.com
 ```
 
 ## 📊 Workflow Status
 
 View workflow runs in the **Actions** tab:
-- ✅ Green = Success
-- ❌ Red = Failed
+- Green = Success
+- Red = Failed
 - 🟡 Yellow = In progress
 
 ## 🎯 Workflow Triggers
@@ -164,8 +164,8 @@ View workflow runs in the **Actions** tab:
 
 ```bash
 gcloud run services describe lab-lens-web \
-  --region us-central1 \
-  --project YOUR_PROJECT_ID
+ --region us-central1 \
+ --project YOUR_PROJECT_ID
 ```
 
 ## 🐛 Troubleshooting
@@ -189,10 +189,10 @@ For detailed setup instructions, see:
 - [CI/CD Setup Guide](../../docs/CI_CD_SETUP.md)
 - [Deployment Guide](../../model_deployment/docs/DEPLOYMENT_GUIDE.md)
 
-## ✅ Best Practices
+## Best Practices
 
-1. ✅ Always test locally before pushing
-2. ✅ Create feature branches for changes
-3. ✅ Review CI results before merging
-4. ✅ Use semantic versioning for releases
-5. ✅ Monitor deployments after completion
+1. Always test locally before pushing
+2. Create feature branches for changes
+3. Review CI results before merging
+4. Use semantic versioning for releases
+5. Monitor deployments after completion

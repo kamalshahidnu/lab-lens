@@ -30,9 +30,9 @@ The risk prediction module analyzes medical discharge summaries and predicts pat
 ```bash
 # Predict risk for processed data
 python src/training/risk_prediction.py \
-    --input data_pipeline/data/processed/processed_discharge_summaries.csv \
-    --output models/gemini/risk_predictions.csv \
-    --limit 100
+  --input data_pipeline/data/processed/processed_discharge_summaries.csv \
+  --output models/gemini/risk_predictions.csv \
+  --limit 100
 ```
 
 ### Advanced Usage (With Gemini)
@@ -40,10 +40,10 @@ python src/training/risk_prediction.py \
 ```bash
 # Use Gemini for more accurate risk prediction
 python src/training/risk_prediction.py \
-    --input data_pipeline/data/processed/processed_discharge_summaries.csv \
-    --output models/gemini/risk_predictions.csv \
-    --limit 100 \
-    --use-gemini
+  --input data_pipeline/data/processed/processed_discharge_summaries.csv \
+  --output models/gemini/risk_predictions.csv \
+  --limit 100 \
+  --use-gemini
 ```
 
 ### Integrated Processing (Summarization + Risk)
@@ -51,9 +51,9 @@ python src/training/risk_prediction.py \
 ```bash
 # Generate summaries AND predict risk in one step
 python scripts/train_with_risk_prediction.py \
-    --input data_pipeline/data/processed/processed_discharge_summaries.csv \
-    --output models/gemini/summaries_with_risk.csv \
-    --limit 100
+  --input data_pipeline/data/processed/processed_discharge_summaries.csv \
+  --output models/gemini/summaries_with_risk.csv \
+  --limit 100
 ```
 
 ## Output Format
@@ -64,12 +64,12 @@ The output CSV contains:
 - `risk_level`: LOW, MEDIUM, or HIGH
 - `risk_score`: Numerical score (0.0 to 1.0)
 - `risk_factor_*`: Individual risk factor values
-  - `risk_factor_age`
-  - `risk_factor_abnormal_labs`
-  - `risk_factor_diagnosis_count`
-  - `risk_factor_high_risk_keywords`
-  - `risk_factor_complexity_score`
-  - etc.
+ - `risk_factor_age`
+ - `risk_factor_abnormal_labs`
+ - `risk_factor_diagnosis_count`
+ - `risk_factor_high_risk_keywords`
+ - `risk_factor_complexity_score`
+ - etc.
 
 ## Risk Prediction Methods
 

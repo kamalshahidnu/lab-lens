@@ -22,9 +22,9 @@ cd lab-lens
 ```bash
 # Create virtual environment
 python3 -m venv .venv
-source .venv/bin/activate  # Mac/Linux
+source .venv/bin/activate # Mac/Linux
 # or
-.venv\Scripts\activate     # Windows
+.venv\Scripts\activate   # Windows
 
 # Install dependencies
 pip install -r requirements.txt
@@ -135,19 +135,19 @@ Then create a Pull Request on GitHub.
 
 ```
 lab-lens/
-├── src/                    # Source code
-│   ├── training/          # Model training modules
-│   ├── utils/             # Utility modules
-│   └── data/              # Data processing modules
-├── data_pipeline/  # Data processing pipeline (single source of truth)
-│   ├── scripts/           # Pipeline scripts
-│   ├── configs/           # Configuration files
-│   └── tests/             # Pipeline tests
-├── scripts/               # Utility scripts
-├── tests/                 # Unit tests
-├── docs/                  # Documentation
-├── configs/               # Global configurations
-└── .github/               # GitHub workflows
+├── src/          # Source code
+│  ├── training/     # Model training modules
+│  ├── utils/       # Utility modules
+│  └── data/       # Data processing modules
+├── data_pipeline/ # Data processing pipeline (single source of truth)
+│  ├── scripts/      # Pipeline scripts
+│  ├── configs/      # Configuration files
+│  └── tests/       # Pipeline tests
+├── scripts/        # Utility scripts
+├── tests/         # Unit tests
+├── docs/         # Documentation
+├── configs/        # Global configurations
+└── .github/        # GitHub workflows
 ```
 
 ## Pull Request Process

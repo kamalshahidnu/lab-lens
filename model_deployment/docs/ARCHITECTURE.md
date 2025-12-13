@@ -20,16 +20,16 @@ This document explains how Lab Lens models are deployed, covering both the **Fro
 Lab Lens has **two main deployment components**:
 
 1. **Frontend**: Streamlit web application (`file_qa_web.py`)
-   - User interface for document Q&A
-   - Handles file uploads and chat interactions
-   - Uses RAG (Retrieval-Augmented Generation) for document queries
-   - Deployed as a single-container service
+  - User interface for document Q&A
+  - Handles file uploads and chat interactions
+  - Uses RAG (Retrieval-Augmented Generation) for document queries
+  - Deployed as a single-container service
 
 2. **Backend**: FastAPI REST API (`app.py`)
-   - Medical discharge summary generation endpoint
-   - Uses MedicalSummarizer (BART model + Gemini refinement)
-   - Provides `/summarize` endpoint for backend processing
-   - Can be used independently or integrated with frontend
+  - Medical discharge summary generation endpoint
+  - Uses MedicalSummarizer (BART model + Gemini refinement)
+  - Provides `/summarize` endpoint for backend processing
+  - Can be used independently or integrated with frontend
 
 **Deployment Platform**: Both services are deployed on **Google Cloud Run**, a serverless container platform.
 
@@ -47,45 +47,45 @@ The frontend is a Streamlit application that provides a chat-based interface for
 
 ```
 ┌─────────────────────────────────────────────────┐
-│         GitHub Repository (main branch)         │
+│     GitHub Repository (main branch)     │
 └─────────────────┬───────────────────────────────┘
-                  │
-                  │ Push to main branch
-                  │ (triggers on file changes)
-                  ▼
+         │
+         │ Push to main branch
+         │ (triggers on file changes)
+         ▼
 ┌─────────────────────────────────────────────────┐
-│      GitHub Actions CI/CD Workflow              │
-│   (.github/workflows/deploy-cloud-run.yml)      │
+│   GitHub Actions CI/CD Workflow       │
+│  (.github/workflows/deploy-cloud-run.yml)   │
 └─────────────────┬───────────────────────────────┘
-                  │
-                  │ 1. Checkout code
-                  │ 2. Authenticate to GCP
-                  │ 3. Build Docker image
-                  │ 4. Push to Google Container Registry
-                  │ 5. Deploy to Cloud Run
-                  ▼
+         │
+         │ 1. Checkout code
+         │ 2. Authenticate to GCP
+         │ 3. Build Docker image
+         │ 4. Push to Google Container Registry
+         │ 5. Deploy to Cloud Run
+         ▼
 ┌─────────────────────────────────────────────────┐
-│     Google Cloud Build (Docker Build)           │
-│     Image: gcr.io/PROJECT_ID/lab-lens-web       │
+│   Google Cloud Build (Docker Build)      │
+│   Image: gcr.io/PROJECT_ID/lab-lens-web    │
 └─────────────────┬───────────────────────────────┘
-                  │
-                  │ Dockerfile.cloudrun
-                  │ - Python 3.12-slim base
-                  │ - Pre-installs ML models
-                  │ - Configures Streamlit
-                  ▼
+         │
+         │ Dockerfile.cloudrun
+         │ - Python 3.12-slim base
+         │ - Pre-installs ML models
+         │ - Configures Streamlit
+         ▼
 ┌─────────────────────────────────────────────────┐
-│       Google Cloud Run Service                  │
-│       Service: lab-lens-web                     │
-│       Region: us-central1                       │
-│       Port: 8501                                │
-│       Memory: 4Gi, CPU: 2                       │
-│       Min instances: 0, Max: 10                 │
+│    Google Cloud Run Service         │
+│    Service: lab-lens-web           │
+│    Region: us-central1            │
+│    Port: 8501                │
+│    Memory: 4Gi, CPU: 2            │
+│    Min instances: 0, Max: 10         │
 └─────────────────────────────────────────────────┘
-                  │
-                  │ Public URL (HTTPS)
-                  ▼
-            End Users / Web Browser
+         │
+         │ Public URL (HTTPS)
+         ▼
+      End Users / Web Browser
 ```
 
 ### Deployment Steps
@@ -107,13 +107,13 @@ The deployment is automatically triggered when code is pushed to the `main` bran
 4. **Set up Cloud SDK** - Configures `gcloud` CLI
 5. **Build and push container** - Builds Docker image using `infrastructure/docker/Dockerfile.cloudrun`
 6. **Deploy to Cloud Run** - Deploys the service with configuration:
-   - **Port**: 8501 (Streamlit default)
-   - **Memory**: 4Gi (for ML models)
-   - **CPU**: 2 cores
-   - **Timeout**: 600 seconds (10 minutes)
-   - **Scaling**: 0-10 instances (serverless auto-scaling)
-   - **Environment variables**: Hugging Face cache paths
-   - **Secrets**: Gemini API key from Secret Manager
+  - **Port**: 8501 (Streamlit default)
+  - **Memory**: 4Gi (for ML models)
+  - **CPU**: 2 cores
+  - **Timeout**: 600 seconds (10 minutes)
+  - **Scaling**: 0-10 instances (serverless auto-scaling)
+  - **Environment variables**: Hugging Face cache paths
+  - **Secrets**: Gemini API key from Secret Manager
 
 #### 3. **Docker Container Build** (`infrastructure/docker/Dockerfile.cloudrun`)
 
@@ -121,10 +121,10 @@ The deployment is automatically triggered when code is pushed to the `main` bran
 - **Base image**: `python:3.12-slim`
 - **System dependencies**: Build tools, curl, git
 - **Python dependencies**: Installed from `requirements.txt` + `pdfplumber`
-- **Model pre-downloading**: 
-  - Downloads `all-MiniLM-L6-v2` embedding model during build
-  - Downloads `dmis-lab/biobert-base-cased-v1.2` (BioBERT) model
-  - Caches models in `/root/.cache/huggingface` to avoid cold starts
+- **Model pre-downloading**:
+ - Downloads `all-MiniLM-L6-v2` embedding model during build
+ - Downloads `dmis-lab/biobert-base-cased-v1.2` (BioBERT) model
+ - Caches models in `/root/.cache/huggingface` to avoid cold starts
 - **Health check**: Monitors `/_stcore/health` endpoint
 - **Entry point**: Runs `streamlit run model_deployment/web/file_qa_web.py`
 
@@ -132,7 +132,7 @@ The deployment is automatically triggered when code is pushed to the `main` bran
 ```dockerfile
 # Pre-download embedding models during build
 RUN python3 -c "from sentence_transformers import SentenceTransformer; \
-    model = SentenceTransformer('all-MiniLM-L6-v2', cache_folder='/root/.cache/huggingface')"
+  model = SentenceTransformer('all-MiniLM-L6-v2', cache_folder='/root/.cache/huggingface')"
 ```
 This ensures models are available immediately when the container starts, reducing cold start time.
 
@@ -150,12 +150,12 @@ This ensures models are available immediately when the container starts, reducin
 - **Auto-scaling**: Automatically scales based on traffic
 
 **Environment & Secrets:**
-- **Environment variables**: 
-  - `HF_HOME=/root/.cache/huggingface`
-  - `TRANSFORMERS_CACHE=/root/.cache/huggingface`
+- **Environment variables**:
+ - `HF_HOME=/root/.cache/huggingface`
+ - `TRANSFORMERS_CACHE=/root/.cache/huggingface`
 - **Secrets** (from Google Secret Manager):
-  - `GEMINI_API_KEY=gemini-api-key:latest`
-  - `GOOGLE_API_KEY=gemini-api-key:latest`
+ - `GEMINI_API_KEY=gemini-api-key:latest`
+ - `GOOGLE_API_KEY=gemini-api-key:latest`
 
 **Networking:**
 - **Allow unauthenticated**: Yes (public access)
@@ -191,40 +191,40 @@ The backend is a FastAPI REST API that provides medical discharge summary genera
 
 ```
 ┌─────────────────────────────────────────────────┐
-│         GitHub Repository (main branch)         │
+│     GitHub Repository (main branch)     │
 └─────────────────┬───────────────────────────────┘
-                  │
-                  │ Push to main branch
-                  │ (API-related file changes)
-                  ▼
+         │
+         │ Push to main branch
+         │ (API-related file changes)
+         ▼
 ┌─────────────────────────────────────────────────┐
-│   GitHub Actions CI/CD Workflow                 │
-│   (.github/workflows/deploy-api-cloud-run.yml)  │
+│  GitHub Actions CI/CD Workflow         │
+│  (.github/workflows/deploy-api-cloud-run.yml) │
 └─────────────────┬───────────────────────────────┘
-                  │
-                  │ Similar workflow to frontend
-                  ▼
+         │
+         │ Similar workflow to frontend
+         ▼
 ┌─────────────────────────────────────────────────┐
-│     Google Cloud Build (Docker Build)           │
-│     Image: gcr.io/PROJECT_ID/lab-lens-api       │
+│   Google Cloud Build (Docker Build)      │
+│   Image: gcr.io/PROJECT_ID/lab-lens-api    │
 └─────────────────┬───────────────────────────────┘
-                  │
-                  │ Dockerfile.api
-                  │ - Python 3.12-slim base
-                  │ - FastAPI + Uvicorn
-                  │ - Pre-loads MedicalSummarizer
-                  ▼
+         │
+         │ Dockerfile.api
+         │ - Python 3.12-slim base
+         │ - FastAPI + Uvicorn
+         │ - Pre-loads MedicalSummarizer
+         ▼
 ┌─────────────────────────────────────────────────┐
-│       Google Cloud Run Service                  │
-│       Service: lab-lens-api                     │
-│       Region: us-central1                       │
-│       Port: 8080                                │
-│       Memory: 4Gi, CPU: 2                       │
+│    Google Cloud Run Service         │
+│    Service: lab-lens-api           │
+│    Region: us-central1            │
+│    Port: 8080                │
+│    Memory: 4Gi, CPU: 2            │
 └─────────────────────────────────────────────────┘
-                  │
-                  │ REST API (HTTPS)
-                  ▼
-            API Clients / Frontend
+         │
+         │ REST API (HTTPS)
+         ▼
+      API Clients / Frontend
 ```
 
 ### Key Differences from Frontend
@@ -233,10 +233,10 @@ The backend is a FastAPI REST API that provides medical discharge summary genera
 2. **Framework**: FastAPI instead of Streamlit
 3. **Entry point**: `uvicorn model_deployment.api.app:app`
 4. **Endpoints**:
-   - `GET /` - API information
-   - `GET /health` - Health check
-   - `GET /info` - Model information
-   - `POST /summarize` - Generate medical summary
+  - `GET /` - API information
+  - `GET /health` - Health check
+  - `GET /info` - Model information
+  - `POST /summarize` - Generate medical summary
 
 ### API Endpoints
 
@@ -244,16 +244,16 @@ The backend is a FastAPI REST API that provides medical discharge summary genera
 **Request:**
 ```json
 {
-  "text": "discharge summary text here..."
+ "text": "discharge summary text here..."
 }
 ```
 
 **Response:**
 ```json
 {
-  "summary": "Patient-friendly summary...",
-  "diagnosis": "Primary diagnoses...",
-  "bart_summary": "BART model summary..."
+ "summary": "Patient-friendly summary...",
+ "diagnosis": "Primary diagnoses...",
+ "bart_summary": "BART model summary..."
 }
 ```
 
@@ -262,8 +262,8 @@ The MedicalSummarizer model is loaded at startup:
 ```python
 @app.on_event("startup")
 async def load_model():
-    global summarizer
-    summarizer = MedicalSummarizer(use_gpu=False)
+  global summarizer
+  summarizer = MedicalSummarizer(use_gpu=False)
 ```
 
 This ensures the model is ready before handling requests.
@@ -313,8 +313,8 @@ echo -n "your-api-key" | gcloud secrets create gemini-api-key --data-file=-
 # Grant Cloud Run access
 PROJECT_NUMBER=$(gcloud projects describe PROJECT_ID --format='value(projectNumber)')
 gcloud secrets add-iam-policy-binding gemini-api-key \
-  --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
+ --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+ --role="roles/secretmanager.secretAccessor"
 ```
 
 ---
@@ -328,19 +328,19 @@ gcloud secrets add-iam-policy-binding gemini-api-key \
 
 **Triggers:**
 - Push to `main` branch when files in these paths change:
-  - `model_deployment/**`
-  - `infrastructure/**`
-  - `src/**`
-  - `requirements.txt`
+ - `model_deployment/**`
+ - `infrastructure/**`
+ - `src/**`
+ - `requirements.txt`
 - Manual trigger via `workflow_dispatch` (with environment selection)
 
 **Steps:**
-1. ✅ Verify GitHub secrets are set
+1. Verify GitHub secrets are set
 2. 🔐 Authenticate to GCP using service account key
 3. 🏗️ Build Docker image using Cloud Build
 4. 📦 Push image to Google Container Registry
 5. 🚀 Deploy to Cloud Run
-6. ✅ Verify deployment with health check
+6. Verify deployment with health check
 7. 💬 Comment on PR with deployment URL
 
 #### Backend (FastAPI)
@@ -363,32 +363,32 @@ You can also deploy manually:
 ```bash
 # Build and deploy
 gcloud builds submit --tag gcr.io/PROJECT_ID/lab-lens-web \
-  --file infrastructure/docker/Dockerfile.cloudrun
+ --file infrastructure/docker/Dockerfile.cloudrun
 
 gcloud run deploy lab-lens-web \
-  --image gcr.io/PROJECT_ID/lab-lens-web \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --port 8501 \
-  --memory 4Gi \
-  --cpu 2
+ --image gcr.io/PROJECT_ID/lab-lens-web \
+ --platform managed \
+ --region us-central1 \
+ --allow-unauthenticated \
+ --port 8501 \
+ --memory 4Gi \
+ --cpu 2
 ```
 
 **Backend:**
 ```bash
 # Build and deploy
 gcloud builds submit --tag gcr.io/PROJECT_ID/lab-lens-api \
-  --file infrastructure/docker/Dockerfile.api
+ --file infrastructure/docker/Dockerfile.api
 
 gcloud run deploy lab-lens-api \
-  --image gcr.io/PROJECT_ID/lab-lens-api \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --port 8080 \
-  --memory 4Gi \
-  --cpu 2
+ --image gcr.io/PROJECT_ID/lab-lens-api \
+ --platform managed \
+ --region us-central1 \
+ --allow-unauthenticated \
+ --port 8080 \
+ --memory 4Gi \
+ --cpu 2
 ```
 
 ---
@@ -403,9 +403,9 @@ Both containers share:
 - **System packages**: build-essential, curl, git
 - **Model caching**: `/root/.cache/huggingface`
 - **Environment variables**:
-  - `HF_HOME=/root/.cache/huggingface`
-  - `TRANSFORMERS_CACHE=/root/.cache/huggingface`
-  - `PYTHONPATH=/app`
+ - `HF_HOME=/root/.cache/huggingface`
+ - `TRANSFORMERS_CACHE=/root/.cache/huggingface`
+ - `PYTHONPATH=/app`
 
 ### Frontend-Specific
 
@@ -419,9 +419,9 @@ Both containers share:
 **Entry point:**
 ```dockerfile
 CMD streamlit run model_deployment/web/file_qa_web.py \
-    --server.port=$PORT \
-    --server.address=0.0.0.0 \
-    --server.headless=true
+  --server.port=$PORT \
+  --server.address=0.0.0.0 \
+  --server.headless=true
 ```
 
 ### Backend-Specific
@@ -434,9 +434,9 @@ CMD streamlit run model_deployment/web/file_qa_web.py \
 **Entry point:**
 ```dockerfile
 CMD exec uvicorn model_deployment.api.app:app \
-    --host 0.0.0.0 \
-    --port ${PORT:-8080} \
-    --workers 1
+  --host 0.0.0.0 \
+  --port ${PORT:-8080} \
+  --workers 1
 ```
 
 ### Model Optimization Strategies
@@ -486,21 +486,21 @@ gcloud run services logs tail lab-lens-api --region us-central1
 
 ### Common Issues
 
-1. **Cold starts slow**: 
-   - Solution: Set `--min-instances 1`
-   - Models are pre-downloaded but still need to load into memory
+1. **Cold starts slow**:
+  - Solution: Set `--min-instances 1`
+  - Models are pre-downloaded but still need to load into memory
 
 2. **Out of memory errors**:
-   - Solution: Increase to 4Gi memory
-   - Check model sizes: BioBERT ~400MB, MedicalSummarizer ~500MB
+  - Solution: Increase to 4Gi memory
+  - Check model sizes: BioBERT ~400MB, MedicalSummarizer ~500MB
 
 3. **Timeout errors**:
-   - Solution: Increase timeout to 600 seconds
-   - First request may take 30-60 seconds (model loading)
+  - Solution: Increase timeout to 600 seconds
+  - First request may take 30-60 seconds (model loading)
 
 4. **Health check failures**:
-   - Verify health endpoint is accessible
-   - Check application logs for startup errors
+  - Verify health endpoint is accessible
+  - Check application logs for startup errors
 
 ---
 

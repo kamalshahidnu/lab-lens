@@ -9,8 +9,8 @@ The File Q&A system allows you to upload documents (text files, PDFs, or images)
 - **Text files**: `.txt`, `.md`
 - **PDF files**: `.pdf`
 - **Image files**: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`, `.tif`
-  - Uses OCR (Optical Character Recognition) to extract text
-  - Optionally uses Gemini Vision API for medical image analysis
+ - Uses OCR (Optical Character Recognition) to extract text
+ - Optionally uses Gemini Vision API for medical image analysis
 
 ## Installation
 
@@ -80,19 +80,19 @@ Once in interactive mode, you can:
 ## How It Works
 
 1. **Document Processing**:
-   - Text files: Directly read
-   - PDF files: Extract text using PyPDF2 or pdfplumber
-   - Images: Extract text using OCR (Tesseract) and optionally analyze with Gemini Vision
+  - Text files: Directly read
+  - PDF files: Extract text using PyPDF2 or pdfplumber
+  - Images: Extract text using OCR (Tesseract) and optionally analyze with Gemini Vision
 
 2. **RAG Processing**:
-   - Documents are split into chunks
-   - Chunks are converted to embeddings
-   - A vector index is built for fast similarity search
+  - Documents are split into chunks
+  - Chunks are converted to embeddings
+  - A vector index is built for fast similarity search
 
 3. **Question Answering**:
-   - Your question is converted to an embedding
-   - Most relevant document chunks are retrieved
-   - Context is sent to Gemini to generate an answer
+  - Your question is converted to an embedding
+  - Most relevant document chunks are retrieved
+  - Context is sent to Gemini to generate an answer
 
 ## Configuration
 
@@ -109,8 +109,8 @@ python scripts/file_qa_interactive.py --file report.pdf --gemini-model gemini-1.
 ## Requirements
 
 - **GOOGLE_API_KEY**: Must be set for Gemini answer generation
-  - Set via: `export GOOGLE_API_KEY='your-key'`
-  - Or in `.env` file: `GOOGLE_API_KEY=your-key`
+ - Set via: `export GOOGLE_API_KEY='your-key'`
+ - Or in `.env` file: `GOOGLE_API_KEY=your-key`
 
 ## Troubleshooting
 

@@ -13,9 +13,9 @@
 # Manual build and deploy
 gcloud builds submit --tag gcr.io/PROJECT_ID/lab-lens-web
 gcloud run deploy lab-lens-web \
-  --image gcr.io/PROJECT_ID/lab-lens-web \
-  --region us-central1 \
-  --allow-unauthenticated
+ --image gcr.io/PROJECT_ID/lab-lens-web \
+ --region us-central1 \
+ --allow-unauthenticated
 ```
 
 ### View Logs
@@ -40,20 +40,20 @@ gcloud run services describe lab-lens-web --region us-central1
 ```bash
 # Update environment variables
 gcloud run services update lab-lens-web \
-  --region us-central1 \
-  --set-env-vars KEY=value
+ --region us-central1 \
+ --set-env-vars KEY=value
 
 # Update memory/CPU
 gcloud run services update lab-lens-web \
-  --region us-central1 \
-  --memory 4Gi \
-  --cpu 2
+ --region us-central1 \
+ --memory 4Gi \
+ --cpu 2
 
 # Update scaling
 gcloud run services update lab-lens-web \
-  --region us-central1 \
-  --min-instances 1 \
-  --max-instances 20
+ --region us-central1 \
+ --min-instances 1 \
+ --max-instances 20
 ```
 
 ### Manage Secrets
@@ -70,8 +70,8 @@ gcloud secrets list
 # Grant Cloud Run access
 PROJECT_NUMBER=$(gcloud projects describe PROJECT_ID --format='value(projectNumber)')
 gcloud secrets add-iam-policy-binding gemini-api-key \
-  --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
+ --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+ --role="roles/secretmanager.secretAccessor"
 ```
 
 ### Rollback
@@ -81,8 +81,8 @@ gcloud run revisions list --service lab-lens-web --region us-central1
 
 # Route to specific revision
 gcloud run services update-traffic lab-lens-web \
-  --region us-central1 \
-  --to-revisions REVISION_NAME=100
+ --region us-central1 \
+ --to-revisions REVISION_NAME=100
 ```
 
 ### Delete Service
@@ -119,16 +119,16 @@ gcloud run services logs read lab-lens-web --region us-central1 --limit 50
 ```bash
 # Increase memory allocation
 gcloud run services update lab-lens-web \
-  --region us-central1 \
-  --memory 4Gi
+ --region us-central1 \
+ --memory 4Gi
 ```
 
 ### Slow Cold Starts
 ```bash
 # Keep at least one instance warm
 gcloud run services update lab-lens-web \
-  --region us-central1 \
-  --min-instances 1
+ --region us-central1 \
+ --min-instances 1
 ```
 
 ## 💰 Cost Optimization
@@ -140,11 +140,11 @@ gcloud run services update lab-lens-web \
 
 ## 🔐 Security Best Practices
 
-1. ✅ Use Secret Manager for API keys (never environment variables)
-2. ✅ Enable Cloud Armor for DDoS protection (if needed)
-3. ✅ Use IAM for authentication (instead of --allow-unauthenticated)
-4. ✅ Regularly rotate secrets
-5. ✅ Set up VPC connector for private services
+1. Use Secret Manager for API keys (never environment variables)
+2. Enable Cloud Armor for DDoS protection (if needed)
+3. Use IAM for authentication (instead of --allow-unauthenticated)
+4. Regularly rotate secrets
+5. Set up VPC connector for private services
 
 ## 📊 Monitoring Metrics
 

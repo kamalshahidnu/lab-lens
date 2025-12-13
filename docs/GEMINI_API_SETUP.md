@@ -43,10 +43,10 @@ python scripts/test_gemini_setup.py
 ```
 
 This will:
-- ✅ Check if the API key is set correctly
-- ✅ Test the API connection
-- ✅ List available models
-- ✅ Verify everything works
+- Check if the API key is set correctly
+- Test the API connection
+- List available models
+- Verify everything works
 
 ## Troubleshooting
 
@@ -81,9 +81,9 @@ python src/training/gemini_inference.py --input "Test text"
 
 ## Security Notes
 
-- ✅ The `.env` file is in `.gitignore` - it won't be committed to git
-- ✅ Never share your API key publicly
-- ✅ Regenerate your API key if it's been exposed
-- ✅ Use environment variables for production deployments
+- The `.env` file is in `.gitignore` - it won't be committed to git
+- Never share your API key publicly
+- Regenerate your API key if it's been exposed
+- Use environment variables for production deployments
 
 

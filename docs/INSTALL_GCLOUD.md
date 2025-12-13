@@ -15,19 +15,19 @@ brew install --cask google-cloud-sdk
 ### Option 2: Direct Download
 
 1. **Download the installer:**
-   ```bash
-   curl https://sdk.cloud.google.com | bash
-   ```
+  ```bash
+  curl https://sdk.cloud.google.com | bash
+  ```
 
 2. **Restart your terminal** or run:
-   ```bash
-   exec -l $SHELL
-   ```
+  ```bash
+  exec -l $SHELL
+  ```
 
 3. **Initialize gcloud:**
-   ```bash
-   gcloud init
-   ```
+  ```bash
+  gcloud init
+  ```
 
 ### Option 3: Manual Installation
 
@@ -79,14 +79,14 @@ SCOPES = ['https://www.googleapis.com/auth/bigquery']
 
 # Try to use existing credentials
 try:
-    credentials, project = default()
-    print('✓ Using existing credentials')
+  credentials, project = default()
+  print(' Using existing credentials')
 except:
-    # If no credentials, run OAuth flow
-    flow = InstalledAppFlow.from_client_secrets_file(
-        'credentials/oauth_client.json', SCOPES)
-    credentials = flow.run_local_server(port=8080)
-    print('✓ Authentication successful')
+  # If no credentials, run OAuth flow
+  flow = InstalledAppFlow.from_client_secrets_file(
+    'credentials/oauth_client.json', SCOPES)
+  credentials = flow.run_local_server(port=8080)
+  print(' Authentication successful')
 
 print('You can now use BigQuery!')
 "

@@ -23,7 +23,7 @@ flow = InstalledAppFlow.from_client_config(
 
 credentials = flow.run_local_server(port=8081, prompt='consent')
 client = bigquery.Client(project='YOUR_PROJECT_ID', credentials=credentials)
-print("✓ Connected!")
+print("Connected!")
 '''
 ## Setup Instructions
 
@@ -94,7 +94,7 @@ oauth_path = os.path.abspath(os.path.join(os.getcwd(), '../../credentials/oauth_
 flow = InstalledAppFlow.from_client_secrets_file(oauth_path, scopes=["https://www.googleapis.com/auth/bigquery"])
 credentials = flow.run_local_server(port=8081, prompt='consent')
 client = bigquery.Client(project=os.getenv('MIMIC_PROJECT_ID'), credentials=credentials)
-print("✓ Connected!")
+print("Connected!")
 ```
 
 ### Step 5: Install Dependencies & Run
@@ -117,11 +117,11 @@ jupyter notebook data-pipeline/notebooks/data_acquisition.ipynb
 
 ## Expected Output
 ```
-✓ Using config paths: /path/to/lab-lens/data-pipeline/data/raw
-✓ Connected!
-✓ Loaded 9715 records with full demographics
-✓ Average text length: 9625 characters
-✓ Saved: /path/to/lab-lens/data-pipeline/data/raw/mimic_discharge_labs.csv (44.28 MB)
+Using config paths: /path/to/lab-lens/data-pipeline/data/raw
+Connected!
+Loaded 9715 records with full demographics
+Average text length: 9625 characters
+Saved: /path/to/lab-lens/data-pipeline/data/raw/mimic_discharge_labs.csv (44.28 MB)
 ```
 
 ---

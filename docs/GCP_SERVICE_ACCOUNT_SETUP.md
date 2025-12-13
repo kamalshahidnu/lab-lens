@@ -10,9 +10,9 @@ export PROJECT_ID="gen-lang-client-0006590375"
 
 # Create service account
 gcloud iam service-accounts create github-actions \
-  --display-name="GitHub Actions Service Account" \
-  --description="Service account for GitHub Actions CI/CD" \
-  --project=$PROJECT_ID
+ --display-name="GitHub Actions Service Account" \
+ --description="Service account for GitHub Actions CI/CD" \
+ --project=$PROJECT_ID
 ```
 
 ## Step 2: Grant Required Roles
@@ -22,23 +22,23 @@ The service account needs these roles for Cloud Run deployment:
 ```bash
 # Cloud Run Admin - to deploy services
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/run.admin"
+ --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+ --role="roles/run.admin"
 
 # Service Account User - to use service accounts
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
+ --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+ --role="roles/iam.serviceAccountUser"
 
 # Storage Admin - for Container Registry
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
+ --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+ --role="roles/storage.admin"
 
 # Cloud Build Editor - to build containers
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --role="roles/cloudbuild.builds.editor"
+ --member="serviceAccount:github-actions@${PROJECT_ID}.iam.gserviceaccount.com" \
+ --role="roles/cloudbuild.builds.editor"
 ```
 
 ## Step 3: Create and Download Key
@@ -46,8 +46,8 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 ```bash
 # Create key file
 gcloud iam service-accounts keys create github-actions-key.json \
-  --iam-account=github-actions@${PROJECT_ID}.iam.gserviceaccount.com \
-  --project=$PROJECT_ID
+ --iam-account=github-actions@${PROJECT_ID}.iam.gserviceaccount.com \
+ --project=$PROJECT_ID
 
 # Display the key (you'll copy this to GitHub)
 cat github-actions-key.json
@@ -58,27 +58,27 @@ cat github-actions-key.json
 ## Step 4: Add Key to GitHub Secrets
 
 1. **Go to your GitHub repository**
-   - Navigate to: `https://github.com/kamalshahidnu/lab-lens`
+  - Navigate to: `https://github.com/kamalshahidnu/lab-lens`
 
 2. **Go to Settings**
-   - Click **Settings** tab in your repository
+  - Click **Settings** tab in your repository
 
 3. **Navigate to Secrets**
-   - Click **Secrets and variables** → **Actions**
+  - Click **Secrets and variables** → **Actions**
 
 4. **Add GCP_PROJECT_ID secret**
-   - Click **New repository secret**
-   - Name: `GCP_PROJECT_ID`
-   - Value: `gen-lang-client-0006590375`
-   - Click **Add secret**
+  - Click **New repository secret**
+  - Name: `GCP_PROJECT_ID`
+  - Value: `gen-lang-client-0006590375`
+  - Click **Add secret**
 
 5. **Add GCP_SA_KEY secret**
-   - Click **New repository secret** again
-   - Name: `GCP_SA_KEY`
-   - Value: Copy the **entire contents** of `github-actions-key.json`
-     - It should start with `{` and end with `}`
-     - Include everything between
-   - Click **Add secret**
+  - Click **New repository secret** again
+  - Name: `GCP_SA_KEY`
+  - Value: Copy the **entire contents** of `github-actions-key.json`
+   - It should start with `{` and end with `}`
+   - Include everything between
+  - Click **Add secret**
 
 ## Step 5: Verify Setup
 
@@ -87,8 +87,8 @@ Test the service account:
 ```bash
 # Authenticate with the service account
 gcloud auth activate-service-account \
-  github-actions@${PROJECT_ID}.iam.gserviceaccount.com \
-  --key-file=github-actions-key.json
+ github-actions@${PROJECT_ID}.iam.gserviceaccount.com \
+ --key-file=github-actions-key.json
 
 # Test permissions
 gcloud run services list --project=$PROJECT_ID
@@ -116,8 +116,8 @@ SA_EMAIL="github-actions@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Create key and output to stdout (then copy to GitHub)
 gcloud iam service-accounts keys create - \
-  --iam-account=$SA_EMAIL \
-  --project=$PROJECT_ID
+ --iam-account=$SA_EMAIL \
+ --project=$PROJECT_ID
 ```
 
 Copy the entire JSON output and paste it into the GitHub secret.
@@ -144,17 +144,17 @@ If deployment fails, verify roles:
 ```bash
 # Check service account permissions
 gcloud projects get-iam-policy $PROJECT_ID \
-  --flatten="bindings[].members" \
-  --filter="bindings.members:github-actions@${PROJECT_ID}.iam.gserviceaccount.com"
+ --flatten="bindings[].members" \
+ --filter="bindings.members:github-actions@${PROJECT_ID}.iam.gserviceaccount.com"
 ```
 
 ## Security Best Practices
 
-1. ✅ **Never commit the key file** to git
-2. ✅ **Use least privilege** - only grant necessary roles
-3. ✅ **Rotate keys regularly** (every 90 days recommended)
-4. ✅ **Monitor service account usage** in GCP Console
-5. ✅ **Use separate service accounts** for different environments
+1. **Never commit the key file** to git
+2. **Use least privilege** - only grant necessary roles
+3. **Rotate keys regularly** (every 90 days recommended)
+4. **Monitor service account usage** in GCP Console
+5. **Use separate service accounts** for different environments
 
 ## Quick Reference
 
@@ -172,3 +172,4 @@ github-actions@gen-lang-client-0006590375.iam.gserviceaccount.com
 **GitHub Secrets:**
 - `GCP_PROJECT_ID` = `gen-lang-client-0006590375`
 - `GCP_SA_KEY` = (JSON key file contents)
+

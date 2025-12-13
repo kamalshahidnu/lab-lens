@@ -42,10 +42,10 @@ python scripts/test_gemini_setup.py
 ```
 
 This will:
-- ✅ Check if the API key is set correctly
-- ✅ Test the API connection
-- ✅ List available models
-- ✅ Verify everything works
+- Check if the API key is set correctly
+- Test the API connection
+- List available models
+- Verify everything works
 
 ## Troubleshooting
 
@@ -65,11 +65,12 @@ If you're being redirected when trying to access the API key page, see [Troubles
 
 ## Security Best Practices
 
-- ✅ Never commit your API key to version control
-- ✅ Use `.env` file (already in `.gitignore`)
-- ✅ Regenerate your API key if it's been exposed
-- ✅ Use environment variables in production
+- Never commit your API key to version control
+- Use `.env` file (already in `.gitignore`)
+- Regenerate your API key if it's been exposed
+- Use environment variables in production
 
 ## Google Cloud Setup
 
 For advanced features, you may need Google Cloud credentials. See [GCP Setup Guide](GCP_SETUP.md).
+

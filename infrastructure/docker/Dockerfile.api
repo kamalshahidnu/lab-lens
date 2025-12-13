@@ -40,7 +40,7 @@ RUN if [ "$SKIP_MODEL_DOWNLOAD" = "true" ]; then \
         print('Verifying model can encode...'); \
         test_embedding = model.encode('test'); \
         print(f'Model verified! Embedding dimension: {len(test_embedding)}')" || \
-      (echo "❌ Failed to download all-MiniLM-L6-v2" && exit 1); \
+      (echo "Failed to download all-MiniLM-L6-v2" && exit 1); \
       python3 -c "import os; \
         os.environ['HF_HOME'] = '/root/.cache/huggingface'; \
         os.environ['TRANSFORMERS_CACHE'] = '/root/.cache/huggingface'; \

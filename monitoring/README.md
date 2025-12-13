@@ -64,5 +64,6 @@ Optional baseline (advanced):
 
 - `MODEL_MONITOR_BASELINE_JSON`: JSON string like:
 
-  `{ "input_chars": {"mean": 1200, "std": 400}, "input_words": {"mean": 200, "std": 60}, "output_chars": {"mean": 900, "std": 300} }`
+ `{ "input_chars": {"mean": 1200, "std": 400}, "input_words": {"mean": 200, "std": 60}, "output_chars": {"mean": 900, "std": 300} }`
+
 

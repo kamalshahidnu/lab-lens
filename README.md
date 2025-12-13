@@ -19,12 +19,12 @@ Lab Lens is an end-to-end MLOps pipeline for healthcare that combines medical re
 
 ### 👥 Team Members
 
-- **Asad Ullah Waraich** 
-- **Shruthi Kashetty** 
-- **Mihir Harishankar Parab** 
-- **Sri Lakshmi Swetha Jalluri** 
-- **Dhruv Rameshbhai Gajera** 
-- **Shahid Kamal** 
+- **Asad Ullah Waraich**
+- **Shruthi Kashetty**
+- **Mihir Harishankar Parab**
+- **Sri Lakshmi Swetha Jalluri**
+- **Dhruv Rameshbhai Gajera**
+- **Shahid Kamal**
 
 ## 🌐 Web Interface Quick Start
 
@@ -155,7 +155,7 @@ For a 28-year-old male patient with multiple stab wounds:
 
 **Total Score**: 0.00 + 0.40 + 0.20 + 0.15 + 0.10 + 0.10 = **0.95**
 
-**Risk Level**: **HIGH** (0.95 ≥ 0.7) ✓
+**Risk Level**: **HIGH** (0.95 ≥ 0.7)
 
 ### Risk Factors Extracted
 
@@ -178,10 +178,10 @@ When enabled, the Gemini AI approach:
 - Analyzes full discharge summary text (up to 3000 characters)
 - Considers clinical context, relationships, and nuance
 - Returns structured risk assessment with:
-  - Risk level (LOW/MEDIUM/HIGH)
-  - Risk score (0.0-1.0)
-  - Key risk factors identified
-  - Clinical recommendations
+ - Risk level (LOW/MEDIUM/HIGH)
+ - Risk score (0.0-1.0)
+ - Key risk factors identified
+ - Clinical recommendations
 - Falls back to rule-based method if unavailable
 
 ### Usage
@@ -203,71 +203,71 @@ This repository follows standard MLOps best practices with clear separation of c
 
 ```
 lab-lens/
-├── 📁 data/                          # Data storage (gitignored)
-│   ├── raw/                          # Raw data from sources
-│   ├── processed/                     # Processed/cleaned data
-│   └── external/                      # External datasets
+├── 📁 data/             # Data storage (gitignored)
+│  ├── raw/             # Raw data from sources
+│  ├── processed/           # Processed/cleaned data
+│  └── external/           # External datasets
 │
-├── 📁 data_pipeline/           # Data pipeline (single source of truth)
-│   ├── configs/                       # Pipeline configuration
-│   ├── scripts/                       # Pipeline scripts (preprocess → validate → features → bias)
-│   ├── notebooks/                     # Data acquisition notebook
-│   └── tests/                         # Pipeline unit tests
+├── 📁 data_pipeline/      # Data pipeline (single source of truth)
+│  ├── configs/            # Pipeline configuration
+│  ├── scripts/            # Pipeline scripts (preprocess → validate → features → bias)
+│  ├── notebooks/           # Data acquisition notebook
+│  └── tests/             # Pipeline unit tests
 │
-├── 📁 model_development/             # Model training and development
-│   ├── configs/                       # Training configurations
-│   ├── scripts/                       # Training scripts
-│   │   ├── train_gemini.py            # Model training
-│   │   ├── hyperparameter_tuning.py  # Hyperparameter optimization
-│   │   └── model_validation.py       # Model validation
-│   ├── notebooks/                     # Training notebooks
-│   └── experiments/                   # Experiment results
+├── 📁 model_development/       # Model training and development
+│  ├── configs/            # Training configurations
+│  ├── scripts/            # Training scripts
+│  │  ├── train_gemini.py      # Model training
+│  │  ├── hyperparameter_tuning.py # Hyperparameter optimization
+│  │  └── model_validation.py    # Model validation
+│  ├── notebooks/           # Training notebooks
+│  └── experiments/          # Experiment results
 │
-├── 📁 model_deployment/              # Model deployment
-│   ├── api/                           # FastAPI application
-│   │   ├── app.py                     # API endpoints
-│   │   └── summarizer.py              # Summarization model
-│   ├── web/                           # Web interface (Streamlit)
-│   │   └── file_qa_web.py            # Streamlit web app
-│   └── scripts/                       # Deployment scripts
+├── 📁 model_deployment/       # Model deployment
+│  ├── api/              # FastAPI application
+│  │  ├── app.py           # API endpoints
+│  │  └── summarizer.py       # Summarization model
+│  ├── web/              # Web interface (Streamlit)
+│  │  └── file_qa_web.py      # Streamlit web app
+│  └── scripts/            # Deployment scripts
 │
-├── 📁 monitoring/                     # Monitoring and observability
-│   ├── metrics.py                      # Metrics collection
-│   └── logging/                        # Logging configurations
+├── 📁 monitoring/           # Monitoring and observability
+│  ├── metrics.py           # Metrics collection
+│  └── logging/            # Logging configurations
 │
-├── 📁 infrastructure/                 # Infrastructure as code
-│   ├── docker/                         # Docker configurations
-│   │   ├── Dockerfile
-│   │   ├── Dockerfile.cloudrun
-│   │   └── cloudbuild.yaml
-│   └── ci_cd/                         # CI/CD workflows
-│       └── .github/workflows/
+├── 📁 infrastructure/         # Infrastructure as code
+│  ├── docker/             # Docker configurations
+│  │  ├── Dockerfile
+│  │  ├── Dockerfile.cloudrun
+│  │  └── cloudbuild.yaml
+│  └── ci_cd/             # CI/CD workflows
+│    └── .github/workflows/
 │
-├── 📁 src/                            # Source code library
-│   ├── rag/                           # RAG system
-│   │   ├── rag_system.py              # Core RAG implementation
-│   │   ├── file_qa.py                 # File Q&A system
-│   │   ├── patient_qa.py              # Patient Q&A interface
-│   │   └── document_processor.py      # Document processing
-│   └── utils/                         # Shared utilities
-│       ├── logging_config.py          # Logging configuration
-│       ├── error_handling.py          # Error handling
-│       └── medical_utils.py           # Medical utilities
+├── 📁 src/              # Source code library
+│  ├── rag/              # RAG system
+│  │  ├── rag_system.py       # Core RAG implementation
+│  │  ├── file_qa.py         # File Q&A system
+│  │  ├── patient_qa.py       # Patient Q&A interface
+│  │  └── document_processor.py   # Document processing
+│  └── utils/             # Shared utilities
+│    ├── logging_config.py     # Logging configuration
+│    ├── error_handling.py     # Error handling
+│    └── medical_utils.py      # Medical utilities
 │
-├── 📁 notebooks/                      # Jupyter notebooks
-│   ├── exploration/                   # Data exploration
-│   └── experiments/                   # Experiment notebooks
+├── 📁 notebooks/           # Jupyter notebooks
+│  ├── exploration/          # Data exploration
+│  └── experiments/          # Experiment notebooks
 │
-├── 📁 tests/                          # Test suite
-│   ├── unit/                          # Unit tests
-│   ├── integration/                   # Integration tests
-│   └── e2e/                           # End-to-end tests
+├── 📁 tests/             # Test suite
+│  ├── unit/             # Unit tests
+│  ├── integration/          # Integration tests
+│  └── e2e/              # End-to-end tests
 │
-├── 📁 docs/                           # Documentation
-│   ├── deployment/                    # Deployment guides
-│   └── api/                           # API documentation
+├── 📁 docs/              # Documentation
+│  ├── deployment/          # Deployment guides
+│  └── api/              # API documentation
 │
-└── 📁 scripts/                        # Utility scripts
+└── 📁 scripts/            # Utility scripts
 ```
 
 **For detailed structure information, see [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)**
@@ -291,9 +291,9 @@ cd lab-lens
 
 # Create virtual environment
 python3 -m venv .venv
-source .venv/bin/activate  # On Mac/Linux
+source .venv/bin/activate # On Mac/Linux
 # or
-.venv\Scripts\activate     # On Windows
+.venv\Scripts\activate   # On Windows
 
 # Install dependencies
 pip install -r data_pipeline/requirements.txt
@@ -303,7 +303,7 @@ pip install -r data_pipeline/requirements.txt
 
 ```bash
 # Install gcloud CLI (if needed)
-brew install --cask google-cloud-sdk  # Mac
+brew install --cask google-cloud-sdk # Mac
 # or download from https://cloud.google.com/sdk/docs/install
 
 # Authenticate
@@ -325,9 +325,9 @@ python data_pipeline/scripts/main_pipeline.py --skip-preprocessing --skip-valida
 
 # Run with custom paths
 python data_pipeline/scripts/main_pipeline.py \
-  --input-path /path/to/raw/data \
-  --output-path /path/to/processed/data \
-  --logs-path /path/to/logs
+ --input-path /path/to/raw/data \
+ --output-path /path/to/processed/data \
+ --logs-path /path/to/logs
 ```
 
 ## 📈 Pipeline Components
@@ -370,22 +370,22 @@ The pipeline can be configured using JSON configuration files:
 
 ```json
 {
-  "pipeline_config": {
-    "input_path": "data/raw",
-    "output_path": "data/processed",
-    "logs_path": "logs",
-    "enable_preprocessing": true,
-    "enable_validation": true,
-    "enable_bias_detection": true,
-    "enable_automated_bias_handling": true
-  },
-  "bias_detection_config": {
-    "alert_thresholds": {
-      "gender_cv_max": 5.0,
-      "ethnicity_cv_max": 10.0,
-      "overall_bias_score_max": 10.0
-    }
+ "pipeline_config": {
+  "input_path": "data/raw",
+  "output_path": "data/processed",
+  "logs_path": "logs",
+  "enable_preprocessing": true,
+  "enable_validation": true,
+  "enable_bias_detection": true,
+  "enable_automated_bias_handling": true
+ },
+ "bias_detection_config": {
+  "alert_thresholds": {
+   "gender_cv_max": 5.0,
+   "ethnicity_cv_max": 10.0,
+   "overall_bias_score_max": 10.0
   }
+ }
 }
 ```
 
@@ -401,7 +401,7 @@ export LOG_LEVEL="INFO"
 
 ### Data Quality Metrics
 - **Validation Score**: 95/100 (Excellent)
-- **Schema Valid**: ✅ All required columns present
+- **Schema Valid**: All required columns present
 - **Missing Text**: 0 records
 - **Duplicate Records**: 0
 - **Average Text Length**: 9,558 characters
@@ -510,8 +510,8 @@ python scripts/patient_qa_single.py --hadm-id 130656 --view
 ```bash
 # Ask one question
 python scripts/patient_qa_single.py \
-  --hadm-id 130656 \
-  --question "What are my diagnoses?"
+ --hadm-id 130656 \
+ --question "What are my diagnoses?"
 ```
 
 ### Step-by-Step Testing Guide
@@ -562,7 +562,7 @@ python scripts/test_rag_with_record.py --test 130656
 
 # Step 3: Test with custom questions
 python scripts/test_rag_with_record.py --test 130656 \
-  --questions "What are my diagnoses?" "What medications do I need?"
+ --questions "What are my diagnoses?" "What medications do I need?"
 ```
 
 #### Python API Usage
@@ -572,8 +572,8 @@ from src.rag.patient_qa import PatientQA
 
 # Initialize with single patient (loads only that patient's record)
 qa = PatientQA(
-    data_path="data_pipeline/data/processed/processed_discharge_summaries.csv",
-    hadm_id=130656  # Single-patient mode
+  data_path="data_pipeline/data/processed/processed_discharge_summaries.csv",
+  hadm_id=130656 # Single-patient mode
 )
 
 # Ask questions
@@ -585,28 +585,28 @@ print(f"Sources: {len(result['sources'])} sections found")
 ### Prerequisites
 
 1. **Dependencies**:
-   ```bash
-   pip install sentence-transformers faiss-cpu google-generativeai
-   ```
+  ```bash
+  pip install sentence-transformers faiss-cpu google-generativeai
+  ```
 
 2. **Google API Key**:
-   ```bash
-   export GOOGLE_API_KEY="your-api-key"
-   # Or use
-   python scripts/setup_gemini_api_key.py
-   ```
+  ```bash
+  export GOOGLE_API_KEY="your-api-key"
+  # Or use
+  python scripts/setup_gemini_api_key.py
+  ```
 
 3. **Processed Data**: Ensure discharge summaries are processed:
-   ```bash
-   python data_pipeline/scripts/main_pipeline.py
-   ```
+  ```bash
+  python data_pipeline/scripts/main_pipeline.py
+  ```
 
 ### Single-Patient Mode Benefits
 
-✅ **Fast**: Only processes one patient's record (5-10 seconds vs 2-5 minutes)  
-✅ **Efficient**: Minimal memory usage (<100 MB vs 2-4 GB)  
-✅ **Secure**: Only loads that specific patient's data  
-✅ **Simple**: No filtering needed - all data is from that patient  
+ **Fast**: Only processes one patient's record (5-10 seconds vs 2-5 minutes)
+ **Efficient**: Minimal memory usage (<100 MB vs 2-4 GB)
+ **Secure**: Only loads that specific patient's data
+ **Simple**: No filtering needed - all data is from that patient
 
 ### Performance
 
@@ -623,7 +623,7 @@ SINGLE PATIENT Q&A - HADM ID: 130656
 ======================================================================
 
 Loading only this patient's discharge summary...
-✅ RAG System ready!
+ RAG System ready!
 
 ❓ Your question: What are my diagnoses?
 
@@ -634,7 +634,7 @@ ANSWER
 Based on your discharge summary, your primary diagnoses include...
 
 📚 Sources: 5 relevant sections found
-   Top relevance score: 0.852
+  Top relevance score: 0.852
 ======================================================================
 ```
 
@@ -754,14 +754,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🏆 Key Achievements
 
-✅ **Successfully processed 5,000+ discharge summaries**  
-✅ **Achieved 95/100 data validation score**  
-✅ **Implemented comprehensive bias detection**  
-✅ **Automated bias mitigation strategies**  
-✅ **Built production-ready MLOps pipeline**  
-✅ **Comprehensive error handling and logging**  
-✅ **Real-time monitoring and alerting**  
-✅ **RAG-Powered Patient Q&A System** - Single-patient mode for efficient Q&A  
-✅ **Scalable and maintainable architecture**  
+ **Successfully processed 5,000+ discharge summaries**
+ **Achieved 95/100 data validation score**
+ **Implemented comprehensive bias detection**
+ **Automated bias mitigation strategies**
+ **Built production-ready MLOps pipeline**
+ **Comprehensive error handling and logging**
+ **Real-time monitoring and alerting**
+ **RAG-Powered Patient Q&A System** - Single-patient mode for efficient Q&A
+ **Scalable and maintainable architecture**
 
 *Developed as part of MLOps Course Project - Fall 2025*

@@ -5,15 +5,15 @@ This guide explains how to access MIMIC-III data from the `physionet-data` proje
 ## Prerequisites
 
 1. **PhysioNet MIMIC-III Access**
-   - Complete CITI training at https://physionet.org/
-   - Request MIMIC-III dataset access
-   - Link your Google account at https://physionet.org/settings/cloud/
-   - Wait for approval (1-3 business days)
-   - **Note**: The Google account linked to PhysioNet can be different from your Git/GitHub email - that's fine!
+  - Complete CITI training at https://physionet.org/
+  - Request MIMIC-III dataset access
+  - Link your Google account at https://physionet.org/settings/cloud/
+  - Wait for approval (1-3 business days)
+  - **Note**: The Google account linked to PhysioNet can be different from your Git/GitHub email - that's fine!
 
 2. **Google Cloud SDK**
-   - Install gcloud CLI: https://cloud.google.com/sdk/docs/install
-   - Verify installation: `gcloud --version`
+  - Install gcloud CLI: https://cloud.google.com/sdk/docs/install
+  - Verify installation: `gcloud --version`
 
 ## Quick Start
 
@@ -48,12 +48,12 @@ python scripts/acquire_mimic3_bigquery.py --test
 
 Expected output:
 ```
-✓ Connection successful! Found 58,976 admissions in MIMIC-III
-✓ Found 4 MIMIC-III datasets:
-   - mimiciii_clinical
-   - mimiciii_derived
-   - mimiciii_notes
-   - mimiciii_notes_derived
+ Connection successful! Found 58,976 admissions in MIMIC-III
+ Found 4 MIMIC-III datasets:
+  - mimiciii_clinical
+  - mimiciii_derived
+  - mimiciii_notes
+  - mimiciii_notes_derived
 ```
 
 ### Step 3: Fetch Data
@@ -181,17 +181,17 @@ gcloud auth application-default login
 
 **Possible causes:**
 1. Google account not linked to PhysioNet
-   - Go to https://physionet.org/settings/cloud/
-   - Link your Google account
-   - Wait for approval
+  - Go to https://physionet.org/settings/cloud/
+  - Link your Google account
+  - Wait for approval
 
 2. MIMIC-III access not approved
-   - Check your PhysioNet account status
-   - Complete CITI training if not done
+  - Check your PhysioNet account status
+  - Complete CITI training if not done
 
 3. Wrong project ID
-   - The project must be `physionet-data` (not your own GCP project)
-   - Verify: `gcloud config get-value project`
+  - The project must be `physionet-data` (not your own GCP project)
+  - Verify: `gcloud config get-value project`
 
 ### Error: "ModuleNotFoundError: No module named 'google.cloud.bigquery'"
 
@@ -232,9 +232,9 @@ This is the easiest method. Credentials are stored locally and automatically use
 2. Grant BigQuery access
 3. Download JSON key
 4. Set environment variable:
-   ```bash
-   export GOOGLE_APPLICATION_CREDENTIALS="/path/to/key.json"
-   ```
+  ```bash
+  export GOOGLE_APPLICATION_CREDENTIALS="/path/to/key.json"
+  ```
 
 ### Method 3: OAuth 2.0 (For Notebooks)
 
@@ -259,19 +259,19 @@ See `data_pipeline/notebooks/data_acquisition.ipynb` for OAuth flow.
 After fetching data:
 
 1. **Preprocess data:**
-   ```bash
-   python data_pipeline/scripts/preprocessing.py
-   ```
+  ```bash
+  python data_pipeline/scripts/preprocessing.py
+  ```
 
 2. **Train model:**
-   ```bash
-   python src/training/train_gemini.py
-   ```
+  ```bash
+  python src/training/train_gemini.py
+  ```
 
 3. **Run inference:**
-   ```bash
-   python src/training/example_usage.py
-   ```
+  ```bash
+  python src/training/example_usage.py
+  ```
 
 ## Additional Resources
 

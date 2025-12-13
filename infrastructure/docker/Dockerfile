@@ -8,29 +8,29 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    make \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+  gcc \
+  g++ \
+  make \
+  curl \
+  && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
 COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+  pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
 COPY . .
 
 # Create necessary directories
 RUN mkdir -p data_pipeline/data/raw \
-    data_pipeline/data/processed \
-    data_pipeline/logs \
-    models/gemini \
-    mlruns \
-    logs
+  data_pipeline/data/processed \
+  data_pipeline/logs \
+  models/gemini \
+  mlruns \
+  logs
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -55,8 +55,8 @@ EXPOSE 5000
 
 # Default training command
 CMD ["python", "src/training/train_with_tracking.py", \
-     "--data-path", "data_pipeline/data/processed/processed_discharge_summaries.csv", \
-     "--config", "configs/gemini_config.json"]
+   "--data-path", "data_pipeline/data/processed/processed_discharge_summaries.csv", \
+   "--config", "configs/gemini_config.json"]
 
 # ============================================
 # Stage 3: Inference Image
@@ -84,18 +84,18 @@ WORKDIR /app
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+  curl \
+  && rm -rf /var/lib/apt/lists/*
 
 # Copy only necessary files
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir \
-    google-generativeai \
-    python-dotenv \
-    mlflow \
-    pandas \
-    numpy
+  pip install --no-cache-dir \
+  google-generativeai \
+  python-dotenv \
+  mlflow \
+  pandas \
+  numpy
 
 # Copy minimal code
 COPY src/training/gemini_model.py src/training/

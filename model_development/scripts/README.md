@@ -34,17 +34,17 @@ pip install google-generativeai
 1. Go to: https://aistudio.google.com/app/apikey
 2. Create an API key
 3. Set environment variable:
-   ```bash
-   export GOOGLE_API_KEY="your-api-key-here"
-   ```
+  ```bash
+  export GOOGLE_API_KEY="your-api-key-here"
+  ```
 
 ### 3. Process Data with Gemini
 
 ```bash
 python src/training/train_gemini.py \
-    --data-path data_pipeline/data/processed/processed_discharge_summaries.csv \
-    --config configs/gemini_config.json \
-    --output-dir models/gemini
+  --data-path data_pipeline/data/processed/processed_discharge_summaries.csv \
+  --config configs/gemini_config.json \
+  --output-dir models/gemini
 ```
 
 ### 4. Generate Summaries
@@ -52,16 +52,16 @@ python src/training/train_gemini.py \
 ```bash
 # Single text
 python src/training/gemini_inference.py \
-    --api-key YOUR_API_KEY \
-    --input "Patient admitted with chest pain..."
+  --api-key YOUR_API_KEY \
+  --input "Patient admitted with chest pain..."
 
 # Batch processing (CSV)
 python src/training/gemini_inference.py \
-    --api-key YOUR_API_KEY \
-    --input data_pipeline/data/processed/processed_discharge_summaries.csv \
-    --output data_pipeline/data/processed/summarized_discharge_summaries.csv \
-    --input-column cleaned_text \
-    --output-column gemini_summary
+  --api-key YOUR_API_KEY \
+  --input data_pipeline/data/processed/processed_discharge_summaries.csv \
+  --output data_pipeline/data/processed/summarized_discharge_summaries.csv \
+  --input-column cleaned_text \
+  --output-column gemini_summary
 ```
 
 ## Configuration
@@ -90,11 +90,11 @@ from src.training import GeminiTrainer, GeminiInference
 
 # Process data
 trainer = GeminiTrainer(
-    config_path='configs/gemini_config.json',
-    output_dir='models/gemini'
+  config_path='configs/gemini_config.json',
+  output_dir='models/gemini'
 )
 results = trainer.process_data(
-    data_path='data_pipeline/data/processed/processed_discharge_summaries.csv'
+  data_path='data_pipeline/data/processed/processed_discharge_summaries.csv'
 )
 
 # Use for inference

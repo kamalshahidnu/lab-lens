@@ -5,13 +5,13 @@ on:
     branches:
       - main
     paths:
-      - 'data_preprocessing/**'
+      - 'data_pipeline/**'
       - 'src/utils/**'
   push:
     branches:
       - main
     paths:
-      - 'data_preprocessing/**'
+      - 'data_pipeline/**'
       - 'src/utils/**'
   workflow_dispatch:
 
@@ -38,16 +38,16 @@ jobs:
 
       - name: Run preprocessing tests
         run: |
-          pytest data_preprocessing/tests/ -v --cov=data_preprocessing --cov-report=xml
+          pytest data_pipeline/tests/ -v --cov=data_pipeline --cov-report=xml
 
       - name: Test preprocessing pipeline
         run: |
-          python data_preprocessing/scripts/main_pipeline.py --help || true
+          python data_pipeline/scripts/main_pipeline.py --help || true
 
       - name: Validate imports
         run: |
-          python -c "from data_preprocessing.scripts.preprocessing import MIMICPreprocessor; print(' Preprocessing imports OK')"
-          python -c "from data_preprocessing.scripts.validation import MIMICDataValidator; print(' Validation imports OK')"
+          python -c "from data_pipeline.scripts.preprocessing import MIMICPreprocessor; print(' Preprocessing imports OK')"
+          python -c "from data_pipeline.scripts.validation import MIMICDataValidator; print(' Validation imports OK')"
 
   lint-preprocessing:
     name: Lint Data Preprocessing
@@ -68,9 +68,9 @@ jobs:
 
       - name: Check code formatting
         run: |
-          black --check data_preprocessing/
-          isort --check-only data_preprocessing/
+          black --check data_pipeline/
+          isort --check-only data_pipeline/
 
       - name: Lint code
         run: |
-          flake8 data_preprocessing/ --max-line-length=127 --extend-ignore=E203,W503
+          flake8 data_pipeline/ --max-line-length=127 --extend-ignore=E203,W503

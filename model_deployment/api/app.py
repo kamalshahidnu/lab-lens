@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -13,11 +14,50 @@ from monitoring.model_monitoring import InferenceMonitor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
+# Global variable to hold the model
+summarizer = None
+summarizer_init_lock = threading.Lock()
+monitor = InferenceMonitor()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup/shutdown events.
+
+    IMPORTANT: On Cloud Run, loading large ML models during startup can cause
+    deploy-time failures (cold start timeouts / readiness failures). We therefore
+    keep startup lightweight and load the summarizer lazily on first request.
+
+    If you *do* want to warm the model at startup (at the cost of longer cold
+    starts), set PRELOAD_SUMMARIZER=true.
+    """
+    global summarizer
+    if str(os.getenv("PRELOAD_SUMMARIZER", "")).lower() in ("1", "true", "yes", "y"):
+        try:
+            logger.info("Preloading Medical Summarizer (PRELOAD_SUMMARIZER=true)...")
+            from model_deployment.api.summarizer import MedicalSummarizer
+
+            summarizer = MedicalSummarizer(use_gpu=False)
+            logger.info("✅ Summarizer preloaded successfully!")
+        except Exception as e:
+            logger.error(f"❌ Summarizer preload failed; will retry lazily: {e}")
+            summarizer = None
+    else:
+        logger.info("Skipping summarizer preload (lazy-load enabled).")
+    
+    yield  # Application runs here
+    
+    # Shutdown logic (if needed)
+    logger.info("Shutting down API...")
+
+
+# Initialize FastAPI app with lifespan
 app = FastAPI(
     title="Medical Discharge Summarizer API",
     description="AI-powered medical discharge summary generation",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Add CORS middleware for frontend integration
@@ -37,40 +77,6 @@ class SummaryResponse(BaseModel):
     summary: str
     diagnosis: str
     bart_summary: str
-
-# Global variable to hold the model
-summarizer = None
-summarizer_init_lock = threading.Lock()
-monitor = InferenceMonitor()
-
-@app.on_event("startup")
-async def load_model():
-    """
-    Startup hook.
-
-    IMPORTANT: On Cloud Run, loading large ML models during startup can cause
-    deploy-time failures (cold start timeouts / readiness failures). We therefore
-    keep startup lightweight and load the summarizer lazily on first request.
-
-    If you *do* want to warm the model at startup (at the cost of longer cold
-    starts), set PRELOAD_SUMMARIZER=true.
-    """
-    global summarizer
-    if str(os.getenv("PRELOAD_SUMMARIZER", "")).lower() not in ("1", "true", "yes", "y"):
-        logger.info("Skipping summarizer preload (lazy-load enabled).")
-        return
-
-    try:
-        logger.info("Preloading Medical Summarizer (PRELOAD_SUMMARIZER=true)...")
-        # Import lazily so startup isn't dominated by heavy deps unless explicitly requested.
-        from model_deployment.api.summarizer import MedicalSummarizer
-
-        summarizer = MedicalSummarizer(use_gpu=False)
-        logger.info("✅ Summarizer preloaded successfully!")
-    except Exception as e:
-        # Do not fail container startup; we'll retry lazily on first summarize request.
-        logger.error(f"❌ Summarizer preload failed; will retry lazily: {e}")
-        summarizer = None
 
 
 def get_or_init_summarizer():

@@ -5,10 +5,10 @@
 If you're being redirected when trying to access https://aistudio.google.com/app/apikey, try these solutions:
 
 ### Solution 1: Check Account Requirements
-- ✅ Make sure you're signed in with a Google account
-- ✅ Verify you're 18+ (required for Google AI Studio)
-- ✅ Try a different Google account if available
-- ✅ Ensure your Google account is in good standing
+- Make sure you're signed in with a Google account
+- Verify you're 18+ (required for Google AI Studio)
+- Try a different Google account if available
+- Ensure your Google account is in good standing
 
 ### Solution 2: Clear Browser Data
 1. Clear cookies and cache for `aistudio.google.com`

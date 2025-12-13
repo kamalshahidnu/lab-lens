@@ -38,7 +38,7 @@ RUN python3 -c "import os; \
     print('Verifying model can encode...'); \
     test_embedding = model.encode('test'); \
     print(f'Model verified! Embedding dimension: {len(test_embedding)}')" || \
-    (echo "❌ Failed to download all-MiniLM-L6-v2" && exit 1)
+    (echo "Failed to download all-MiniLM-L6-v2" && exit 1)
 
 # Pre-download BioBERT model if needed (optional, won't fail build if it fails)
 RUN python3 -c "import os; \

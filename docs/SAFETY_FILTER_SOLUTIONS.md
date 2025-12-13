@@ -54,22 +54,22 @@ prompt = "This is a clinical diagnostic image for medical analysis. Analyze for 
 
 ```python
 safety_settings = [
-    {
-        "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-        "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE
-    },
-    {
-        "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE
-    },
-    {
-        "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE
-    },
-    {
-        "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE
-    }
+  {
+    "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+    "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE
+  },
+  {
+    "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE
+  },
+  {
+    "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE
+  },
+  {
+    "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE
+  }
 ]
 ```
 
@@ -94,19 +94,19 @@ python scripts/test_disease_detection.py /path/to/image.jpg
 ## Recommended Actions
 
 1. **For Development/Testing**:
-   - Try multiple different medical images
-   - Use anonymized or de-identified images when possible
-   - Keep detailed logs of which images work/fail
+  - Try multiple different medical images
+  - Use anonymized or de-identified images when possible
+  - Keep detailed logs of which images work/fail
 
 2. **For Production**:
-   - Contact Google Cloud Support for medical use case exemptions
-   - Consider using Vertex AI for production medical imaging
-   - Implement fallback mechanisms for blocked images
+  - Contact Google Cloud Support for medical use case exemptions
+  - Consider using Vertex AI for production medical imaging
+  - Implement fallback mechanisms for blocked images
 
 3. **For Research**:
-   - Document which image types trigger filters
-   - Request research access/whitelisting
-   - Use approved medical image datasets
+  - Document which image types trigger filters
+  - Request research access/whitelisting
+  - Use approved medical image datasets
 
 ## Error Message Interpretation
 
@@ -123,12 +123,12 @@ This means:
 
 ## Next Steps
 
-1. ✅ Code updated with proper safety settings
-2. ✅ Better error messages implemented
+1. Code updated with proper safety settings
+2. Better error messages implemented
 3. ⚠️ Still encountering blocks? Try:
-   - Different medical images
-   - Contacting Google Cloud Support
-   - Using Vertex AI API
+  - Different medical images
+  - Contacting Google Cloud Support
+  - Using Vertex AI API
 
 ---
 

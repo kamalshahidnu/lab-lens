@@ -46,8 +46,8 @@ jobs:
 
       - name: Validate imports
         run: |
-          python -c "from data_preprocessing.scripts.preprocessing import MIMICPreprocessor; print('✅ Preprocessing imports OK')"
-          python -c "from data_preprocessing.scripts.validation import MIMICDataValidator; print('✅ Validation imports OK')"
+          python -c "from data_preprocessing.scripts.preprocessing import MIMICPreprocessor; print(' Preprocessing imports OK')"
+          python -c "from data_preprocessing.scripts.validation import MIMICDataValidator; print(' Validation imports OK')"
 
   lint-preprocessing:
     name: Lint Data Preprocessing

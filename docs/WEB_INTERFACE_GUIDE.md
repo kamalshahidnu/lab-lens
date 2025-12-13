@@ -27,8 +27,8 @@ This will:
 
 ### 📁 Document Upload
 - **File Upload**: Drag and drop or browse for files
-  - Supports: `.txt`, `.pdf`, `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`, `.md`
-  - Multiple files can be uploaded at once
+ - Supports: `.txt`, `.pdf`, `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`, `.md`
+ - Multiple files can be uploaded at once
 - **Text Input**: Paste raw text directly into the text area
 
 ### 💬 Chat Interface
@@ -40,22 +40,22 @@ This will:
 ### 🎯 Usage Flow
 
 1. **Upload Documents**:
-   - Click "Upload files" in the sidebar
-   - Select one or more files (PDF, text, images)
-   - OR paste text in the text area
-   - Click "📥 Load Documents"
+  - Click "Upload files" in the sidebar
+  - Select one or more files (PDF, text, images)
+  - OR paste text in the text area
+  - Click "📥 Load Documents"
 
 2. **Ask Questions**:
-   - Type your question in the chat input
-   - Press Enter or click send
-   - View the answer and sources
+  - Type your question in the chat input
+  - Press Enter or click send
+  - View the answer and sources
 
 3. **Continue Conversation**:
-   - Ask follow-up questions
-   - All context is maintained
+  - Ask follow-up questions
+  - All context is maintained
 
 4. **Clear Session**:
-   - Click "🗑️ Clear All" to reset
+  - Click "🗑️ Clear All" to reset
 
 ## Interface Elements
 

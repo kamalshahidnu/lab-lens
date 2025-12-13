@@ -43,14 +43,14 @@ jobs:
       - name: Verify Secrets
         run: |
           if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
-            echo "❌ Error: GCP_PROJECT_ID secret is not set"
+            echo " Error: GCP_PROJECT_ID secret is not set"
             exit 1
           fi
           if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
-            echo "❌ Error: GCP_SA_KEY secret is not set"
+            echo " Error: GCP_SA_KEY secret is not set"
             exit 1
           fi
-          echo "✅ Secrets verified"
+          echo " Secrets verified"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -106,7 +106,7 @@ jobs:
           sleep 15
           echo "🔍 Testing health endpoint..."
           curl -f $SERVICE_URL/_stcore/health || exit 1
-          echo "✅ Health check passed!"
+          echo " Health check passed!"
 
       - name: Comment Deployment URL
         if: github.event_name == 'pull_request'

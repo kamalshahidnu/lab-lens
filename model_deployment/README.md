@@ -6,8 +6,15 @@ This directory contains code for deploying models to production.
 
 - `api/` - FastAPI application for model serving
 - `web/` - Streamlit web interface
-- `containerization/` - Docker configurations
 - `scripts/` - Deployment automation scripts
+- `docs/` - Deployment documentation (architecture, setup, Cloud Run notes)
+
+## Documentation
+
+- [Web Interface Setup](docs/WEB_INTERFACE_SETUP.md)
+- [Frontend Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
+- [Cloud Run Quick Reference](docs/CLOUD_RUN_QUICK_REFERENCE.md)
+- [Deployment Architecture](docs/ARCHITECTURE.md)
 
 ## API Deployment
 
@@ -40,11 +47,11 @@ Or manually:
 # Build and deploy
 gcloud builds submit --config=infrastructure/docker/cloudbuild-api.yaml
 gcloud run deploy lab-lens-api \
-  --image gcr.io/<project-id>/lab-lens-api:latest \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --port 8080
+ --image gcr.io/<project-id>/lab-lens-api:latest \
+ --platform managed \
+ --region us-central1 \
+ --allow-unauthenticated \
+ --port 8080
 ```
 
 ### API Endpoints
@@ -53,8 +60,8 @@ gcloud run deploy lab-lens-api \
 - `GET /health` - Health check
 - `GET /info` - Model information
 - `POST /summarize` - Generate medical discharge summary
-  - Request body: `{"text": "discharge summary text..."}`
-  - Response: `{"summary": "...", "diagnosis": "...", "bart_summary": "..."}`
+ - Request body: `{"text": "discharge summary text..."}`
+ - Response: `{"summary": "...", "diagnosis": "...", "bart_summary": "..."}`
 
 ## Web Interface Deployment
 

@@ -22,13 +22,13 @@ cd lab-lens
 ```bash
 # Create virtual environment
 python3 -m venv .venv
-source .venv/bin/activate  # Mac/Linux
+source .venv/bin/activate # Mac/Linux
 # or
-.venv\Scripts\activate     # Windows
+.venv\Scripts\activate   # Windows
 
 # Install dependencies
 pip install -r requirements.txt
-pip install -r data-pipeline/requirements.txt
+pip install -r data_pipeline/requirements.txt
 
 # Install development dependencies
 pip install black isort flake8 mypy pytest pytest-cov
@@ -65,7 +65,7 @@ git checkout -b fix/your-bug-fix
 pytest
 
 # Run with coverage
-pytest --cov=src --cov=data-pipeline
+pytest --cov=src --cov=data_pipeline
 
 # Run specific test file
 pytest tests/test_validation.py
@@ -75,13 +75,13 @@ pytest tests/test_validation.py
 
 ```bash
 # Format code with black
-black src/ data-pipeline/scripts/ scripts/
+black src/ data_pipeline/scripts/ scripts/
 
 # Sort imports
-isort src/ data-pipeline/scripts/ scripts/
+isort src/ data_pipeline/scripts/ scripts/
 
 # Check linting
-flake8 src/ data-pipeline/scripts/ scripts/
+flake8 src/ data_pipeline/scripts/ scripts/
 ```
 
 ### 5. Commit Changes
@@ -135,19 +135,19 @@ Then create a Pull Request on GitHub.
 
 ```
 lab-lens/
-├── src/                    # Source code
-│   ├── training/          # Model training modules
-│   ├── utils/             # Utility modules
-│   └── data/              # Data processing modules
-├── data-pipeline/         # Data processing pipeline
-│   ├── scripts/           # Pipeline scripts
-│   ├── configs/           # Configuration files
-│   └── tests/             # Pipeline tests
-├── scripts/               # Utility scripts
-├── tests/                 # Unit tests
-├── docs/                  # Documentation
-├── configs/               # Global configurations
-└── .github/               # GitHub workflows
+├── src/          # Source code
+│  ├── training/     # Model training modules
+│  ├── utils/       # Utility modules
+│  └── data/       # Data processing modules
+├── data_pipeline/ # Data processing pipeline (single source of truth)
+│  ├── scripts/      # Pipeline scripts
+│  ├── configs/      # Configuration files
+│  └── tests/       # Pipeline tests
+├── scripts/        # Utility scripts
+├── tests/         # Unit tests
+├── docs/         # Documentation
+├── configs/        # Global configurations
+└── .github/        # GitHub workflows
 ```
 
 ## Pull Request Process

@@ -44,11 +44,11 @@ jobs:
 
       - name: Test model development imports
         run: |
-          python -c "import sys; sys.path.insert(0, '.'); print('✅ Model development imports OK')"
+          python -c "import sys; sys.path.insert(0, '.'); print(' Model development imports OK')"
 
       - name: Validate MLflow tracking
         run: |
-          python -c "import mlflow; print(f'✅ MLflow {mlflow.__version__} available')"
+          python -c "import mlflow; print(f' MLflow {mlflow.__version__} available')"
 
   train-model:
     name: Train Model (Optional)

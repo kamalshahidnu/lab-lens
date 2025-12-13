@@ -15,7 +15,7 @@ This document explains exactly how prompt engineering is implemented in the Gemi
 The model uses a **system prompt** that defines the role and task:
 
 ```python
-system_prompt = """You are a medical expert assistant. Your task is to create concise, 
+system_prompt = """You are a medical expert assistant. Your task is to create concise,
 accurate summaries of medical discharge summaries. Focus on:
 - Chief complaint and primary diagnosis
 - Key treatments and procedures
@@ -25,7 +25,7 @@ accurate summaries of medical discharge summaries. Focus on:
 Keep the summary clear, professional, and medically accurate."""
 ```
 
-**Purpose**: 
+**Purpose**:
 - Sets the model's "role" (medical expert assistant)
 - Defines the task (summarize discharge summaries)
 - Specifies what to include (4 key areas)
@@ -56,7 +56,7 @@ Summary:"""
 Here's what gets sent to the API:
 
 ```
-You are a medical expert assistant. Your task is to create concise, 
+You are a medical expert assistant. Your task is to create concise,
 accurate summaries of medical discharge summaries. Focus on:
 - Chief complaint and primary diagnosis
 - Key treatments and procedures
@@ -67,9 +67,9 @@ Keep the summary clear, professional, and medically accurate.
 
 Please summarize the following medical discharge summary in approximately 150 words:
 
-Patient admitted with chest pain. History of hypertension and diabetes. 
-Physical exam shows elevated blood pressure. Discharge diagnosis: Acute 
-coronary syndrome. Discharge medications: Aspirin 81mg daily, Metformin 
+Patient admitted with chest pain. History of hypertension and diabetes.
+Physical exam shows elevated blood pressure. Discharge diagnosis: Acute
+coronary syndrome. Discharge medications: Aspirin 81mg daily, Metformin
 500mg twice daily. Follow up with cardiology in 2 weeks.
 
 Summary:
@@ -81,42 +81,42 @@ The prompt is sent to Gemini API with generation config:
 
 ```python
 response = self.model.generate_content(
-    prompt,
-    generation_config=genai.types.GenerationConfig(
-        temperature=self.temperature,      # 0.3 (low = more deterministic)
-        max_output_tokens=self.max_output_tokens,  # 2048
-    )
+  prompt,
+  generation_config=genai.types.GenerationConfig(
+    temperature=self.temperature,   # 0.3 (low = more deterministic)
+    max_output_tokens=self.max_output_tokens, # 2048
+  )
 )
 ```
 
 ## Prompt Engineering Techniques Used
 
 ### 1. **Role-Based Prompting**
-- ✅ "You are a medical expert assistant"
+- "You are a medical expert assistant"
 - **Why**: Helps model adopt appropriate persona and knowledge
 
 ### 2. **Task Specification**
-- ✅ "Your task is to create concise, accurate summaries"
+- "Your task is to create concise, accurate summaries"
 - **Why**: Clearly defines what the model should do
 
 ### 3. **Structured Output Guidelines**
-- ✅ Bullet points for what to include:
-  - Chief complaint and primary diagnosis
-  - Key treatments and procedures
-  - Discharge medications
-  - Important follow-up instructions
+- Bullet points for what to include:
+ - Chief complaint and primary diagnosis
+ - Key treatments and procedures
+ - Discharge medications
+ - Important follow-up instructions
 - **Why**: Guides model to include specific information
 
 ### 4. **Quality Constraints**
-- ✅ "Keep the summary clear, professional, and medically accurate"
+- "Keep the summary clear, professional, and medically accurate"
 - **Why**: Sets quality expectations
 
 ### 5. **Length Control**
-- ✅ "approximately {max_length} words"
+- "approximately {max_length} words"
 - **Why**: Controls output length dynamically
 
 ### 6. **Output Format Trigger**
-- ✅ "Summary:" at the end
+- "Summary:" at the end
 - **Why**: Signals to model where to start generating
 
 ## Customization Options
@@ -126,7 +126,7 @@ response = self.model.generate_content(
 You can provide a custom system prompt:
 
 ```python
-custom_prompt = """You are a clinical documentation specialist. 
+custom_prompt = """You are a clinical documentation specialist.
 Create brief, structured summaries focusing on:
 1. Primary diagnosis
 2. Treatment received
@@ -141,17 +141,17 @@ The code includes few-shot learning capability (in `train_gemini.py`):
 
 ```python
 def create_few_shot_examples(self, df: pd.DataFrame, num_examples: int = 3):
-    """Creates example pairs to show desired format"""
-    examples = []
-    for i in range(min(num_examples, len(df))):
-        input_text = df.iloc[i]['cleaned_text'][:500]
-        summary = # ... extractive summary
-        examples.append(f"""
+  """Creates example pairs to show desired format"""
+  examples = []
+  for i in range(min(num_examples, len(df))):
+    input_text = df.iloc[i]['cleaned_text'][:500]
+    summary = # ... extractive summary
+    examples.append(f"""
 Example {i + 1}:
 Input: {input_text[:200]}...
 Summary: {summary}
 """)
-    return '\n'.join(examples)
+  return '\n'.join(examples)
 ```
 
 **Status**: Code exists but few-shot examples are not currently injected into prompts.
@@ -162,32 +162,32 @@ Prompts can be customized via config file (`configs/gemini_config.json`):
 
 ```json
 {
-  "processing_config": {
-    "system_prompt": null,  // Can set custom prompt here
-    "max_output_length": 150
-  }
+ "processing_config": {
+  "system_prompt": null, // Can set custom prompt here
+  "max_output_length": 150
+ }
 }
 ```
 
 ## Prompt Engineering Best Practices Applied
 
-### ✅ Clear Instructions
+### Clear Instructions
 - Explicit task definition
 - Specific output requirements
 
-### ✅ Role Definition
+### Role Definition
 - Model knows it's a "medical expert assistant"
 
-### ✅ Structured Guidelines
+### Structured Guidelines
 - Bullet points for clarity
 - Specific sections to include
 
-### ✅ Quality Constraints
+### Quality Constraints
 - Professional tone
 - Medical accuracy
 - Conciseness
 
-### ✅ Length Control
+### Length Control
 - Dynamic word count limits
 - Prevents overly long summaries
 
@@ -195,19 +195,19 @@ Prompts can be customized via config file (`configs/gemini_config.json`):
 
 ```
 User calls: model.summarize(text, max_length=150)
-    ↓
+  ↓
 1. Check if custom system_prompt provided
-    ↓
+  ↓
 2. Use default system prompt if None
-    ↓
+  ↓
 3. Construct full prompt:
-   - System prompt
-   - Task instruction with max_length
-   - Input text
-   - "Summary:" trigger
-    ↓
+  - System prompt
+  - Task instruction with max_length
+  - Input text
+  - "Summary:" trigger
+  ↓
 4. Send to Gemini API with generation config
-    ↓
+  ↓
 5. Return generated summary
 ```
 
@@ -225,7 +225,7 @@ User calls: model.summarize(text, max_length=150)
 ## Example: Complete Prompt Sent to API
 
 ```
-You are a medical expert assistant. Your task is to create concise, 
+You are a medical expert assistant. Your task is to create concise,
 accurate summaries of medical discharge summaries. Focus on:
 - Chief complaint and primary diagnosis
 - Key treatments and procedures
@@ -236,9 +236,9 @@ Keep the summary clear, professional, and medically accurate.
 
 Please summarize the following medical discharge summary in approximately 150 words:
 
-Patient admitted with chest pain. History of hypertension and diabetes. 
-Physical exam shows elevated blood pressure. Discharge diagnosis: Acute 
-coronary syndrome. Discharge medications: Aspirin 81mg daily, Metformin 
+Patient admitted with chest pain. History of hypertension and diabetes.
+Physical exam shows elevated blood pressure. Discharge diagnosis: Acute
+coronary syndrome. Discharge medications: Aspirin 81mg daily, Metformin
 500mg twice daily. Follow up with cardiology in 2 weeks.
 
 Summary:
@@ -264,7 +264,7 @@ Please summarize the following medical discharge summary...
 Add reasoning steps:
 
 ```python
-system_prompt = """... First, identify the chief complaint. 
+system_prompt = """... First, identify the chief complaint.
 Then, note the primary diagnosis. Next, list key treatments..."""
 ```
 
@@ -283,7 +283,7 @@ system_prompt = """... Format your summary as:
 Add medical terminology guidance:
 
 ```python
-system_prompt = """... Use standard medical abbreviations 
+system_prompt = """... Use standard medical abbreviations
 where appropriate. Maintain clinical accuracy..."""
 ```
 
@@ -297,13 +297,13 @@ where appropriate. Maintain clinical accuracy..."""
 ## Summary
 
 **Prompt Engineering Approach**:
-- ✅ Role-based system prompt
-- ✅ Structured output guidelines
-- ✅ Dynamic length control
-- ✅ Quality constraints
+- Role-based system prompt
+- Structured output guidelines
+- Dynamic length control
+- Quality constraints
 - ⚠️ Few-shot examples (code exists, not used)
-- ❌ Chain-of-thought (not implemented)
-- ❌ Structured output format (not enforced)
+- Chain-of-thought (not implemented)
+- Structured output format (not enforced)
 
 **Result**: The model generates good summaries (ROUGE-L: 0.47) using prompt engineering alone, without fine-tuning.
 

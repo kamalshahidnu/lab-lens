@@ -118,12 +118,12 @@ def check_data_availability(**context):
     
     # Get project root and construct paths at runtime
     project_root = get_project_root()
-    data_file = project_root / 'data-pipeline' / 'data' / 'raw' / 'mimic_discharge_labs.csv'
+    data_file = project_root / 'data_pipeline' / 'data' / 'raw' / 'mimic_discharge_labs.csv'
     
     if not data_file.exists():
         raise FileNotFoundError(
             f"Raw data not found: {data_file}\n"
-            f"Please ensure MIMIC-III data is available in data-pipeline/data/raw/"
+            f"Please ensure MIMIC-III data is available in data_pipeline/data/raw/"
         )
     
     # Validate file quality
@@ -163,9 +163,9 @@ def run_preprocessing_task(**context):
     
     # Get paths at runtime
     project_root = get_project_root()
-    input_path = project_root / 'data-pipeline' / 'data' / 'raw'
-    output_path = project_root / 'data-pipeline' / 'data' / 'processed'
-    scripts_path = project_root / 'data-pipeline' / 'scripts'
+    input_path = project_root / 'data_pipeline' / 'data' / 'raw'
+    output_path = project_root / 'data_pipeline' / 'data' / 'processed'
+    scripts_path = project_root / 'data_pipeline' / 'scripts'
     
     # Validate input
     input_file = input_path / 'mimic_discharge_labs.csv'
@@ -210,12 +210,12 @@ def run_validation_task(**context):
     
     # Get paths at runtime
     project_root = get_project_root()
-    processed_path = project_root / 'data-pipeline' / 'data' / 'processed'
-    logs_path = project_root / 'data-pipeline' / 'logs'
-    scripts_path = project_root / 'data-pipeline' / 'scripts'
+    processed_path = project_root / 'data_pipeline' / 'data' / 'processed'
+    logs_path = project_root / 'data_pipeline' / 'logs'
+    scripts_path = project_root / 'data_pipeline' / 'scripts'
     
     # Load config
-    config_path = project_root / 'data-pipeline' / 'configs' / 'pipeline_config.json'
+    config_path = project_root / 'data_pipeline' / 'configs' / 'pipeline_config.json'
     with open(config_path, 'r') as f:
         config = json.load(f)
     
@@ -272,9 +272,9 @@ def run_feature_engineering_task(**context):
     
     # Get paths at runtime
     project_root = get_project_root()
-    processed_path = project_root / 'data-pipeline' / 'data' / 'processed'
-    logs_path = project_root / 'data-pipeline' / 'logs'
-    scripts_path = project_root / 'data-pipeline' / 'scripts'
+    processed_path = project_root / 'data_pipeline' / 'data' / 'processed'
+    logs_path = project_root / 'data_pipeline' / 'logs'
+    scripts_path = project_root / 'data_pipeline' / 'scripts'
     
     # Validate input
     input_file = processed_path / 'processed_discharge_summaries.csv'
@@ -329,12 +329,12 @@ def run_bias_detection_task(**context):
     
     # Get paths at runtime
     project_root = get_project_root()
-    processed_path = project_root / 'data-pipeline' / 'data' / 'processed'
-    logs_path = project_root / 'data-pipeline' / 'logs'
-    scripts_path = project_root / 'data-pipeline' / 'scripts'
+    processed_path = project_root / 'data_pipeline' / 'data' / 'processed'
+    logs_path = project_root / 'data_pipeline' / 'logs'
+    scripts_path = project_root / 'data_pipeline' / 'scripts'
     
     # Load config
-    config_path = project_root / 'data-pipeline' / 'configs' / 'pipeline_config.json'
+    config_path = project_root / 'data_pipeline' / 'configs' / 'pipeline_config.json'
     with open(config_path, 'r') as f:
         config = json.load(f)
     
@@ -408,12 +408,12 @@ def run_bias_mitigation_task(**context):
     
     # Get paths at runtime
     project_root = get_project_root()
-    processed_path = project_root / 'data-pipeline' / 'data' / 'processed'
-    logs_path = project_root / 'data-pipeline' / 'logs'
-    scripts_path = project_root / 'data-pipeline' / 'scripts'
+    processed_path = project_root / 'data_pipeline' / 'data' / 'processed'
+    logs_path = project_root / 'data_pipeline' / 'logs'
+    scripts_path = project_root / 'data_pipeline' / 'scripts'
     
     # Load config
-    config_path = project_root / 'data-pipeline' / 'configs' / 'pipeline_config.json'
+    config_path = project_root / 'data_pipeline' / 'configs' / 'pipeline_config.json'
     with open(config_path, 'r') as f:
         config = json.load(f)
     
@@ -484,7 +484,7 @@ def generate_pipeline_summary(**context):
     
     # Get project root
     project_root = get_project_root()
-    logs_path = project_root / 'data-pipeline' / 'logs'
+    logs_path = project_root / 'data_pipeline' / 'logs'
     
     # Pull all metrics from XCom
     metrics = {

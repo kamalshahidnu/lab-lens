@@ -22,16 +22,14 @@ Complete documentation for the Lab Lens healthcare intelligence platform.
 
 ### Reference
 - **[Repository Organization](REPOSITORY_ORGANIZATION.md)** - Project structure overview
-- **[Requirements Status](COMPLETE_REQUIREMENTS_STATUS.md)** - Implementation status
-
-### Archive
-- **[archive/](archive/)** - Deprecated or outdated documentation
 
 ## 🔗 Quick Links
 
 - [Main README](../README.md) - Project overview
 - [Contributing Guide](../CONTRIBUTING.md) - How to contribute
 - [Project Structure](../PROJECT_STRUCTURE.md) - Directory structure
+- [Model deployment docs](../model_deployment/docs/) - Web/API deployment and Cloud Run notes
+- [CI/CD overview](../infrastructure/ci_cd/README.md) - GitHub Actions workflows
 - [Changelog](../CHANGELOG.md) - Version history
 
 ## 📖 Documentation by Feature

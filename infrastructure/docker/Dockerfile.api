@@ -7,14 +7,15 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+# Copy requirements (API-only to keep the image smaller/faster)
+COPY model_deployment/api/requirements.txt ./requirements-api.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-api.txt
 
 # Copy application code
 COPY . .
@@ -23,28 +24,31 @@ COPY . .
 RUN mkdir -p models/vector_db logs /root/.cache/huggingface && \
     chmod -R 777 models logs /root/.cache/huggingface
 
-# Pre-download embedding models to avoid cold start issues
-# Use explicit cache directory and verify download
-RUN python3 -c "import os; \
-    os.environ['HF_HOME'] = '/root/.cache/huggingface'; \
-    os.environ['TRANSFORMERS_CACHE'] = '/root/.cache/huggingface'; \
-    from sentence_transformers import SentenceTransformer; \
-    print('Downloading all-MiniLM-L6-v2...'); \
-    model = SentenceTransformer('all-MiniLM-L6-v2', cache_folder='/root/.cache/huggingface'); \
-    print(f'Model cached successfully at: {model._modules[\"0\"].auto_model.config._name_or_path}'); \
-    print('Verifying model can encode...'); \
-    test_embedding = model.encode('test'); \
-    print(f'Model verified! Embedding dimension: {len(test_embedding)}')" || \
-    (echo "❌ Failed to download all-MiniLM-L6-v2" && exit 1)
-
-# Pre-download BioBERT model if needed (optional, won't fail build if it fails)
-RUN python3 -c "import os; \
-    os.environ['HF_HOME'] = '/root/.cache/huggingface'; \
-    os.environ['TRANSFORMERS_CACHE'] = '/root/.cache/huggingface'; \
-    from sentence_transformers import SentenceTransformer; \
-    print('Downloading dmis-lab/biobert-base-cased-v1.2...'); \
-    SentenceTransformer('dmis-lab/biobert-base-cased-v1.2', cache_folder='/root/.cache/huggingface'); \
-    print('BioBERT model cached successfully')" || echo "⚠️ BioBERT download failed, will use default model"
+# Optionally pre-download embedding models to avoid cold start issues.
+# In CI you can set SKIP_MODEL_DOWNLOAD=true to keep builds fast.
+ARG SKIP_MODEL_DOWNLOAD=false
+RUN if [ "$SKIP_MODEL_DOWNLOAD" = "true" ]; then \
+      echo "⏭️  Skipping embedding model download (SKIP_MODEL_DOWNLOAD=true)"; \
+    else \
+      python3 -c "import os; \
+        os.environ['HF_HOME'] = '/root/.cache/huggingface'; \
+        os.environ['TRANSFORMERS_CACHE'] = '/root/.cache/huggingface'; \
+        from sentence_transformers import SentenceTransformer; \
+        print('Downloading all-MiniLM-L6-v2...'); \
+        model = SentenceTransformer('all-MiniLM-L6-v2', cache_folder='/root/.cache/huggingface'); \
+        print(f'Model cached successfully at: {model._modules[\"0\"].auto_model.config._name_or_path}'); \
+        print('Verifying model can encode...'); \
+        test_embedding = model.encode('test'); \
+        print(f'Model verified! Embedding dimension: {len(test_embedding)}')" || \
+      (echo "Failed to download all-MiniLM-L6-v2" && exit 1); \
+      python3 -c "import os; \
+        os.environ['HF_HOME'] = '/root/.cache/huggingface'; \
+        os.environ['TRANSFORMERS_CACHE'] = '/root/.cache/huggingface'; \
+        from sentence_transformers import SentenceTransformer; \
+        print('Downloading dmis-lab/biobert-base-cased-v1.2...'); \
+        SentenceTransformer('dmis-lab/biobert-base-cased-v1.2', cache_folder='/root/.cache/huggingface'); \
+        print('BioBERT model cached successfully')" || echo "⚠️ BioBERT download failed, will use default model"; \
+    fi
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -62,7 +66,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl --fail http://localhost:$PORT/health || exit 1
 
 # Run FastAPI with uvicorn - Cloud Run will provide PORT env var
-CMD exec uvicorn model_deployment.api.app:app \
-    --host 0.0.0.0 \
-    --port ${PORT:-8080} \
-    --workers 1
+CMD ["sh", "-c", "exec python -m uvicorn model_deployment.api.app:app --host 0.0.0.0 --port ${PORT:-8080}"]

@@ -22,34 +22,34 @@ Complete guide for deploying the Streamlit web application (`file_qa_web.py`).
 ### Steps
 
 1. **Push your code to GitHub**
-   ```bash
-   git add .
-   git commit -m "Add Streamlit web app"
-   git push origin main
-   ```
+  ```bash
+  git add .
+  git commit -m "Add Streamlit web app"
+  git push origin main
+  ```
 
 2. **Go to Streamlit Community Cloud**
-   - Visit: https://share.streamlit.io/
-   - Click "Sign in with GitHub"
-   - Authorize Streamlit
+  - Visit: https://share.streamlit.io/
+  - Click "Sign in with GitHub"
+  - Authorize Streamlit
 
 3. **Deploy your app**
-   - Click "New app"
-   - Select your repository: `lab-lens`
-   - Main file path: `scripts/file_qa_web.py`
-   - App URL: `https://your-app-name.streamlit.app`
+  - Click "New app"
+  - Select your repository: `lab-lens`
+  - Main file path: `scripts/file_qa_web.py`
+  - App URL: `https://your-app-name.streamlit.app`
 
 4. **Set Environment Variables**
-   In the Streamlit Cloud dashboard, add:
-   ```
-   GEMINI_API_KEY=your-gemini-api-key
-   GOOGLE_API_KEY=your-gemini-api-key
-   ```
+  In the Streamlit Cloud dashboard, add:
+  ```
+  GEMINI_API_KEY=your-gemini-api-key
+  GOOGLE_API_KEY=your-gemini-api-key
+  ```
 
 5. **Deploy**
-   - Click "Deploy"
-   - Wait for build to complete (~2-3 minutes)
-   - Your app will be live!
+  - Click "Deploy"
+  - Wait for build to complete (~2-3 minutes)
+  - Your app will be live!
 
 ### Requirements File for Streamlit Cloud
 Create `packages.txt` (for system packages) if needed:
@@ -76,11 +76,11 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    software-properties-common \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+  build-essential \
+  curl \
+  software-properties-common \
+  git \
+  && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
 COPY requirements.txt .
@@ -129,11 +129,11 @@ docker build -f Dockerfile.streamlit -t lab-lens-web:latest .
 
 # Run container
 docker run -d \
-  -p 8501:8501 \
-  -e GEMINI_API_KEY=your-api-key \
-  -e GOOGLE_API_KEY=your-api-key \
-  --name lab-lens-app \
-  lab-lens-web:latest
+ -p 8501:8501 \
+ -e GEMINI_API_KEY=your-api-key \
+ -e GOOGLE_API_KEY=your-api-key \
+ --name lab-lens-app \
+ lab-lens-web:latest
 
 # Check logs
 docker logs -f lab-lens-app
@@ -167,118 +167,118 @@ Use the Docker image with their container services.
 1. **Create Dockerfile** (use the one above)
 
 2. **Build and push to Google Container Registry**
-   ```bash
-   # Authenticate
-   gcloud auth login
-   gcloud config set project YOUR_PROJECT_ID
+  ```bash
+  # Authenticate
+  gcloud auth login
+  gcloud config set project YOUR_PROJECT_ID
 
-   # Build and push
-   gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/lab-lens-web
-   ```
+  # Build and push
+  gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/lab-lens-web
+  ```
 
 3. **Deploy to Cloud Run**
-   ```bash
-   gcloud run deploy lab-lens-web \
-     --image gcr.io/YOUR_PROJECT_ID/lab-lens-web \
-     --platform managed \
-     --region us-central1 \
-     --allow-unauthenticated \
-     --port 8501 \
-     --memory 2Gi \
-     --set-env-vars GEMINI_API_KEY=your-key
-   ```
+  ```bash
+  gcloud run deploy lab-lens-web \
+   --image gcr.io/YOUR_PROJECT_ID/lab-lens-web \
+   --platform managed \
+   --region us-central1 \
+   --allow-unauthenticated \
+   --port 8501 \
+   --memory 2Gi \
+   --set-env-vars GEMINI_API_KEY=your-key
+  ```
 
 4. **Get URL**
-   ```bash
-   gcloud run services describe lab-lens-web --region us-central1
-   ```
+  ```bash
+  gcloud run services describe lab-lens-web --region us-central1
+  ```
 
 ### Option B: AWS Elastic Beanstalk
 
 1. **Install EB CLI**
-   ```bash
-   pip install awsebcli
-   ```
+  ```bash
+  pip install awsebcli
+  ```
 
 2. **Initialize EB**
-   ```bash
-   eb init -p python-3.12 lab-lens-web
-   eb create lab-lens-env
-   ```
+  ```bash
+  eb init -p python-3.12 lab-lens-web
+  eb create lab-lens-env
+  ```
 
 3. **Set environment variables**
-   ```bash
-   eb setenv GEMINI_API_KEY=your-key
-   ```
+  ```bash
+  eb setenv GEMINI_API_KEY=your-key
+  ```
 
 4. **Deploy**
-   ```bash
-   eb deploy
-   ```
+  ```bash
+  eb deploy
+  ```
 
 ### Option C: Azure App Service
 
 1. **Install Azure CLI**
-   ```bash
-   az login
-   az group create --name lab-lens-rg --location eastus
-   ```
+  ```bash
+  az login
+  az group create --name lab-lens-rg --location eastus
+  ```
 
 2. **Create App Service**
-   ```bash
-   az webapp create \
-     --resource-group lab-lens-rg \
-     --plan lab-lens-plan \
-     --name lab-lens-web \
-     --runtime "PYTHON:3.12"
-   ```
+  ```bash
+  az webapp create \
+   --resource-group lab-lens-rg \
+   --plan lab-lens-plan \
+   --name lab-lens-web \
+   --runtime "PYTHON:3.12"
+  ```
 
 3. **Configure environment variables**
-   ```bash
-   az webapp config appsettings set \
-     --resource-group lab-lens-rg \
-     --name lab-lens-web \
-     --settings GEMINI_API_KEY=your-key
-   ```
+  ```bash
+  az webapp config appsettings set \
+   --resource-group lab-lens-rg \
+   --name lab-lens-web \
+   --settings GEMINI_API_KEY=your-key
+  ```
 
 4. **Deploy**
-   ```bash
-   az webapp up --name lab-lens-web --resource-group lab-lens-rg
-   ```
+  ```bash
+  az webapp up --name lab-lens-web --resource-group lab-lens-rg
+  ```
 
 ### Option D: Heroku
 
 1. **Install Heroku CLI**
-   ```bash
-   # Mac
-   brew tap heroku/brew && brew install heroku
-   ```
+  ```bash
+  # Mac
+  brew tap heroku/brew && brew install heroku
+  ```
 
 2. **Create Procfile**
-   ```
-   web: streamlit run scripts/file_qa_web.py --server.port=$PORT --server.address=0.0.0.0
-   ```
+  ```
+  web: streamlit run scripts/file_qa_web.py --server.port=$PORT --server.address=0.0.0.0
+  ```
 
 3. **Create setup.sh**
-   ```bash
-   mkdir -p ~/.streamlit/
+  ```bash
+  mkdir -p ~/.streamlit/
 
-   echo "\
-   [server]\n\
-   headless = true\n\
-   port = $PORT\n\
-   enableCORS = false\n\
-   \n\
-   " > ~/.streamlit/config.toml
-   ```
+  echo "\
+  [server]\n\
+  headless = true\n\
+  port = $PORT\n\
+  enableCORS = false\n\
+  \n\
+  " > ~/.streamlit/config.toml
+  ```
 
 4. **Deploy**
-   ```bash
-   heroku login
-   heroku create lab-lens-web
-   heroku config:set GEMINI_API_KEY=your-key
-   git push heroku main
-   ```
+  ```bash
+  heroku login
+  heroku create lab-lens-web
+  heroku config:set GEMINI_API_KEY=your-key
+  git push heroku main
+  ```
 
 ---
 
@@ -289,79 +289,79 @@ Use the Docker image with their container services.
 ### Using Systemd Service
 
 1. **Install dependencies on server**
-   ```bash
-   sudo apt update
-   sudo apt install python3.12 python3-pip nginx
-   ```
+  ```bash
+  sudo apt update
+  sudo apt install python3.12 python3-pip nginx
+  ```
 
 2. **Clone repository**
-   ```bash
-   git clone https://github.com/your-username/lab-lens.git
-   cd lab-lens
-   pip3 install -r requirements.txt
-   pip3 install pdfplumber
-   ```
+  ```bash
+  git clone https://github.com/your-username/lab-lens.git
+  cd lab-lens
+  pip3 install -r requirements.txt
+  pip3 install pdfplumber
+  ```
 
 3. **Create systemd service**
-   Create `/etc/systemd/system/lab-lens.service`:
-   ```ini
-   [Unit]
-   Description=Lab Lens Streamlit App
-   After=network.target
+  Create `/etc/systemd/system/lab-lens.service`:
+  ```ini
+  [Unit]
+  Description=Lab Lens Streamlit App
+  After=network.target
 
-   [Service]
-   Type=simple
-   User=your-username
-   WorkingDirectory=/path/to/lab-lens
-   Environment="GEMINI_API_KEY=your-key"
-   Environment="GOOGLE_API_KEY=your-key"
-   ExecStart=/usr/bin/streamlit run scripts/file_qa_web.py --server.port=8501 --server.address=0.0.0.0
-   Restart=always
+  [Service]
+  Type=simple
+  User=your-username
+  WorkingDirectory=/path/to/lab-lens
+  Environment="GEMINI_API_KEY=your-key"
+  Environment="GOOGLE_API_KEY=your-key"
+  ExecStart=/usr/bin/streamlit run scripts/file_qa_web.py --server.port=8501 --server.address=0.0.0.0
+  Restart=always
 
-   [Install]
-   WantedBy=multi-user.target
-   ```
+  [Install]
+  WantedBy=multi-user.target
+  ```
 
 4. **Start service**
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable lab-lens
-   sudo systemctl start lab-lens
-   sudo systemctl status lab-lens
-   ```
+  ```bash
+  sudo systemctl daemon-reload
+  sudo systemctl enable lab-lens
+  sudo systemctl start lab-lens
+  sudo systemctl status lab-lens
+  ```
 
 5. **Configure Nginx reverse proxy** (optional)
-   Create `/etc/nginx/sites-available/lab-lens`:
-   ```nginx
-   server {
-       listen 80;
-       server_name your-domain.com;
+  Create `/etc/nginx/sites-available/lab-lens`:
+  ```nginx
+  server {
+    listen 80;
+    server_name your-domain.com;
 
-       location / {
-           proxy_pass http://127.0.0.1:8501;
-           proxy_http_version 1.1;
-           proxy_set_header Upgrade $http_upgrade;
-           proxy_set_header Connection "upgrade";
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto $scheme;
-       }
-   }
-   ```
+    location / {
+      proxy_pass http://127.0.0.1:8501;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+  }
+  ```
 
-   Enable and restart:
-   ```bash
-   sudo ln -s /etc/nginx/sites-available/lab-lens /etc/nginx/sites-enabled/
-   sudo nginx -t
-   sudo systemctl restart nginx
-   ```
+  Enable and restart:
+  ```bash
+  sudo ln -s /etc/nginx/sites-available/lab-lens /etc/nginx/sites-enabled/
+  sudo nginx -t
+  sudo systemctl restart nginx
+  ```
 
 6. **Set up SSL with Let's Encrypt** (optional)
-   ```bash
-   sudo apt install certbot python3-certbot-nginx
-   sudo certbot --nginx -d your-domain.com
-   ```
+  ```bash
+  sudo apt install certbot python3-certbot-nginx
+  sudo certbot --nginx -d your-domain.com
+  ```
 
 ---
 
@@ -372,16 +372,16 @@ Required environment variables for all deployments:
 ```bash
 # Gemini API Key (required)
 GEMINI_API_KEY=your-gemini-api-key-here
-GOOGLE_API_KEY=your-gemini-api-key-here  # Alias for compatibility
+GOOGLE_API_KEY=your-gemini-api-key-here # Alias for compatibility
 
 # Optional configurations
-MODEL_ID=asadwaraich/bart-medical-discharge-summarizer  # For MedicalSummarizer
+MODEL_ID=asadwaraich/bart-medical-discharge-summarizer # For MedicalSummarizer
 LOG_LEVEL=INFO
 ```
 
 ---
 
-## ✅ Pre-Deployment Checklist
+## Pre-Deployment Checklist
 
 - [ ] All dependencies in `requirements.txt`
 - [ ] Environment variables configured

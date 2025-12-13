@@ -22,17 +22,17 @@ scikit-learn>=1.3.0
 
 # Medical image analysis models (optional - for BiomedCLIP and medical models)
 # Option 1: Local models (download model to your machine)
-transformers>=4.30.0  # For BiomedCLIP and medical-specific models (local)
-torch>=2.0.0  # PyTorch for medical models (local)
-torchvision>=0.15.0  # For image preprocessing (local)
-sentence-transformers>=2.2.0  # For BiomedCLIP embeddings (local)
+transformers>=4.30.0 # For BiomedCLIP and medical-specific models (local)
+torch>=2.0.0 # PyTorch for medical models (local)
+torchvision>=0.15.0 # For image preprocessing (local)
+sentence-transformers>=2.2.0 # For BiomedCLIP embeddings (local)
 
 # Option 2: API-based (use Hugging Face Inference API - no model download)
-requests>=2.31.0  # For Hugging Face API calls
-huggingface_hub>=0.20.0  # Optional: Better API client for Hugging Face (recommended)
+requests>=2.31.0 # For Hugging Face API calls
+huggingface_hub>=0.20.0 # Optional: Better API client for Hugging Face (recommended)
 
 # Gemini 1.5 Pro API
-google-generativeai>=0.3.0  # Google Gemini API
+google-generativeai>=0.3.0 # Google Gemini API
 
 # Development and testing
 pytest>=7.4.0
@@ -47,23 +47,23 @@ sphinx>=7.0.0
 
 # RAG (Retrieval-Augmented Generation) for Patient Q&A
 # Note: sentence-transformers is already listed above for BiomedCLIP
-faiss-cpu>=1.7.4  # For efficient vector similarity search (optional but recommended)
-chromadb>=0.4.0  # Vector database for persistent document storage (recommended)
+faiss-cpu>=1.7.4 # For efficient vector similarity search (optional but recommended)
+chromadb>=0.4.0 # Vector database for persistent document storage (recommended)
 sphinx-rtd-theme>=1.3.0
 
 # Document processing for RAG (text, PDF, images)
-PyPDF2>=3.0.0  # PDF text extraction (alternative: pdfplumber>=0.9.0)
-pdfplumber>=0.9.0  # Better PDF text extraction (recommended)
-pytesseract>=0.3.10  # OCR for image text extraction
-Pillow>=10.0.0  # Image processing (for OCR and vision)
+PyPDF2>=3.0.0 # PDF text extraction (alternative: pdfplumber>=0.9.0)
+pdfplumber>=0.9.0 # Better PDF text extraction (recommended)
+pytesseract>=0.3.10 # OCR for image text extraction
+Pillow>=10.0.0 # Image processing (for OCR and vision)
 
 # Web interface for File Q&A
-streamlit>=1.28.0  # Modern web interface for chat-based Q&A
+streamlit>=1.28.0 # Modern web interface for chat-based Q&A
 
 # FastAPI backend API
-fastapi>=0.104.0  # FastAPI web framework for REST API
-uvicorn[standard]>=0.24.0  # ASGI server for FastAPI
-pydantic>=2.0.0  # Data validation (required by FastAPI)
+fastapi>=0.104.0 # FastAPI web framework for REST API
+uvicorn[standard]>=0.24.0 # ASGI server for FastAPI
+pydantic>=2.0.0 # Data validation (required by FastAPI)
 
 # Utilities
 python-dotenv>=1.0.0

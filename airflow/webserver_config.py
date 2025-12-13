@@ -1,18 +1,18 @@
 #
 # Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
+# or more contributor license agreements. See the NOTICE file
 # distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
+# regarding copyright ownership. The ASF licenses this file
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
+# with the License. You may obtain a copy of the License at
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+#  http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
+# KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations
 # under the License.
 """Default configuration for the Airflow webserver."""
@@ -75,20 +75,20 @@ AUTH_TYPE = AUTH_DB
 # When using OAuth Auth, uncomment to setup provider(s) info
 # Google OAuth example:
 # OAUTH_PROVIDERS = [{
-#   'name':'google',
-#     'token_key':'access_token',
-#     'icon':'fa-google',
-#         'remote_app': {
-#             'api_base_url':'https://www.googleapis.com/oauth2/v2/',
-#             'client_kwargs':{
-#                 'scope': 'email profile'
-#             },
-#             'access_token_url':'https://accounts.google.com/o/oauth2/token',
-#             'authorize_url':'https://accounts.google.com/o/oauth2/auth',
-#             'request_token_url': None,
-#             'client_id': GOOGLE_KEY,
-#             'client_secret': GOOGLE_SECRET_KEY,
-#         }
+#  'name':'google',
+#   'token_key':'access_token',
+#   'icon':'fa-google',
+#     'remote_app': {
+#       'api_base_url':'https://www.googleapis.com/oauth2/v2/',
+#       'client_kwargs':{
+#         'scope': 'email profile'
+#       },
+#       'access_token_url':'https://accounts.google.com/o/oauth2/token',
+#       'authorize_url':'https://accounts.google.com/o/oauth2/auth',
+#       'request_token_url': None,
+#       'client_id': GOOGLE_KEY,
+#       'client_secret': GOOGLE_SECRET_KEY,
+#     }
 # }]
 
 # When using LDAP Auth, setup the ldap server
@@ -97,10 +97,10 @@ AUTH_TYPE = AUTH_DB
 # When using OpenID Auth, uncomment to setup OpenID providers.
 # example for OpenID authentication
 # OPENID_PROVIDERS = [
-#    { 'name': 'Yahoo', 'url': 'https://me.yahoo.com' },
-#    { 'name': 'AOL', 'url': 'http://openid.aol.com/<username>' },
-#    { 'name': 'Flickr', 'url': 'http://www.flickr.com/<username>' },
-#    { 'name': 'MyOpenID', 'url': 'https://www.myopenid.com' }]
+#  { 'name': 'Yahoo', 'url': 'https://me.yahoo.com' },
+#  { 'name': 'AOL', 'url': 'http://openid.aol.com/<username>' },
+#  { 'name': 'Flickr', 'url': 'http://www.flickr.com/<username>' },
+#  { 'name': 'MyOpenID', 'url': 'https://www.myopenid.com' }]
 
 # ----------------------------------------------------
 # Theme CONFIG
@@ -110,7 +110,7 @@ AUTH_TYPE = AUTH_DB
 # http://flask-appbuilder.readthedocs.io/en/latest/customizing.html#changing-themes
 # Please make sure to remove "navbar_color" configuration from airflow.cfg
 # in order to fully utilize the theme. (or use that property in conjunction with theme)
-# APP_THEME = "bootstrap-theme.css"  # default bootstrap
+# APP_THEME = "bootstrap-theme.css" # default bootstrap
 # APP_THEME = "amelia.css"
 # APP_THEME = "cerulean.css"
 # APP_THEME = "cosmo.css"

@@ -39,7 +39,7 @@ jobs:
       - name: Test Docker image
         run: |
           docker run --rm lab-lens:test python -c "import sys; print(f'Python {sys.version}')"
-          docker run --rm lab-lens:test python -c "from sentence_transformers import SentenceTransformer; print('✅ Dependencies OK')"
+          docker run --rm lab-lens:test python -c "from sentence_transformers import SentenceTransformer; print(' Dependencies OK')"
 
   test-deployment:
     name: Test Deployment Scripts
@@ -61,8 +61,8 @@ jobs:
 
       - name: Test API imports
         run: |
-          python -c "from model_deployment.api.app import app; print('✅ API imports OK')"
+          python -c "from model_deployment.api.app import app; print(' API imports OK')"
 
       - name: Test web app imports
         run: |
-          python -c "import sys; sys.path.insert(0, '.'); from model_deployment.web import file_qa_web; print('✅ Web app imports OK')"
+          python -c "import sys; sys.path.insert(0, '.'); from model_deployment.web import file_qa_web; print(' Web app imports OK')"

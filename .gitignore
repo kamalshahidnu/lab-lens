@@ -302,3 +302,4 @@ airflow/airflow.cfg
 .env.local
 github-actions-key.json
 *.json
+data/

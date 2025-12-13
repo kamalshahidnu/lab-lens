@@ -12,6 +12,7 @@ import random
 import json
 import urllib.request
 import urllib.error
+import platform
 
 # Add parent directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -20,12 +21,19 @@ from src.rag.rag_system import RAGSystem
 from src.rag.document_processor import DocumentProcessor
 from src.rag.vector_db import VectorDatabase, CHROMADB_AVAILABLE
 
-# Import FAISS availability check
-try:
-    import faiss
-    FAISS_AVAILABLE = True
-except ImportError:
+# Import FAISS availability check.
+# NOTE: On some macOS environments, importing `faiss` can segfault (native binary mismatch).
+# We therefore skip FAISS on Darwin by default to keep the app/test suite stable.
+if platform.system() == "Darwin":
+    faiss = None  # type: ignore[assignment]
     FAISS_AVAILABLE = False
+else:
+    try:
+        import faiss  # type: ignore
+        FAISS_AVAILABLE = True
+    except ImportError:
+        faiss = None  # type: ignore[assignment]
+        FAISS_AVAILABLE = False
 from src.training.gemini_inference import GeminiInference
 from src.utils.logging_config import get_logger
 from src.utils.error_handling import ErrorHandler, safe_execute

@@ -13,6 +13,7 @@ from typing import List, Dict, Optional, Tuple
 import pickle
 import json
 from datetime import datetime
+import platform
 
 # Add parent directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -40,15 +41,23 @@ except ImportError:
         "Install with: pip install sentence-transformers"
     )
 
-try:
-    import faiss
-    FAISS_AVAILABLE = True
-except ImportError:
+# NOTE: On some macOS environments, importing `faiss` can segfault (native binary mismatch).
+# We therefore skip FAISS on Darwin by default to keep the app/test suite stable.
+if platform.system() == "Darwin":
+    faiss = None  # type: ignore[assignment]
     FAISS_AVAILABLE = False
-    logger.warning(
-        "faiss-cpu not available. Using numpy-based similarity search (slower). "
-        "For better performance, install with: pip install faiss-cpu"
-    )
+    logger.info("FAISS disabled on macOS (Darwin) to avoid native import crashes; using numpy-based search.")
+else:
+    try:
+        import faiss  # type: ignore
+        FAISS_AVAILABLE = True
+    except ImportError:
+        faiss = None  # type: ignore[assignment]
+        FAISS_AVAILABLE = False
+        logger.warning(
+            "faiss-cpu not available. Using numpy-based similarity search (slower). "
+            "For better performance, install with: pip install faiss-cpu"
+        )
 
 
 class RAGSystem:

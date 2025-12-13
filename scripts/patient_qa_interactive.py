@@ -160,7 +160,7 @@ Examples:
     parser.add_argument(
         '--data-path',
         type=str,
-        default='data-pipeline/data/processed/processed_discharge_summaries.csv',
+        default='data_pipeline/data/processed/processed_discharge_summaries.csv',
         help='Path to processed discharge summaries CSV'
     )
     

@@ -42,7 +42,7 @@ pip install google-generativeai
 
 ```bash
 python src/training/train_gemini.py \
-    --data-path data-pipeline/data/processed/processed_discharge_summaries.csv \
+    --data-path data_pipeline/data/processed/processed_discharge_summaries.csv \
     --config configs/gemini_config.json \
     --output-dir models/gemini
 ```
@@ -58,8 +58,8 @@ python src/training/gemini_inference.py \
 # Batch processing (CSV)
 python src/training/gemini_inference.py \
     --api-key YOUR_API_KEY \
-    --input data-pipeline/data/processed/processed_discharge_summaries.csv \
-    --output data-pipeline/data/processed/summarized_discharge_summaries.csv \
+    --input data_pipeline/data/processed/processed_discharge_summaries.csv \
+    --output data_pipeline/data/processed/summarized_discharge_summaries.csv \
     --input-column cleaned_text \
     --output-column gemini_summary
 ```
@@ -94,7 +94,7 @@ trainer = GeminiTrainer(
     output_dir='models/gemini'
 )
 results = trainer.process_data(
-    data_path='data-pipeline/data/processed/processed_discharge_summaries.csv'
+    data_path='data_pipeline/data/processed/processed_discharge_summaries.csv'
 )
 
 # Use for inference

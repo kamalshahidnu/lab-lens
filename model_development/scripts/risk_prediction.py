@@ -398,7 +398,7 @@ def main():
     
     parser = argparse.ArgumentParser(description='Predict medical risk from discharge summaries')
     parser.add_argument('--input', type=str,
-                       default='data-pipeline/data/processed/processed_discharge_summaries.csv',
+                       default='data_pipeline/data/processed/processed_discharge_summaries.csv',
                        help='Input CSV file')
     parser.add_argument('--output', type=str,
                        default='models/gemini/risk_predictions.csv',

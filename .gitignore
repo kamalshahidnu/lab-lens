@@ -243,9 +243,6 @@ temp_*.txt
 *.bak
 *.swp
 
-# Archive (if contains sensitive data)
-docs/archive/*.md
-
 # Python
 __pycache__/
 *.py[cod]
@@ -263,6 +260,10 @@ ENV/
 # Logs
 logs/*.json
 logs/bias_plots/*.png
+
+# Local dev databases
+*.db
+data/users.db
 
  Model files (too large for Git)
 *.safetensors

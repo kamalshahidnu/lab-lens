@@ -28,7 +28,7 @@ class PatientQA:
     
     def __init__(
         self,
-        data_path: str = "data-pipeline/data/processed/processed_discharge_summaries.csv",
+        data_path: str = "data_pipeline/data/processed/processed_discharge_summaries.csv",
         embedding_model: str = "all-MiniLM-L6-v2",
         gemini_model: str = "gemini-2.0-flash-exp",
         rag_k: int = 5,

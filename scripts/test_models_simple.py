@@ -184,8 +184,8 @@ def test_image_disease_detection(
         print("\nTo test image disease detection:")
         print("  python scripts/test_models_simple.py --image-path /path/to/chest_xray.jpg")
         print("\nAlternatively:")
-        print("  - Place a chest X-ray image in data-pipeline/data/raw/images/")
-        print("  - Run: python scripts/test_models_simple.py --image-path data-pipeline/data/raw/images/your_image.jpg")
+        print("  - Place a chest X-ray image in data/raw/images/")
+        print("  - Run: python scripts/test_models_simple.py --image-path data/raw/images/your_image.jpg")
         return result
     
     image_path = Path(image_path)

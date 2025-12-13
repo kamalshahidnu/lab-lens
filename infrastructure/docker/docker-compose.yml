@@ -8,7 +8,7 @@ services:
       target: training
     image: lab-lens-training:latest
     volumes:
-      - ./data-pipeline/data:/app/data-pipeline/data
+      - ./data_pipeline/data:/app/data_pipeline/data
       - ./models:/app/models
       - ./mlruns:/app/mlruns
       - ./logs:/app/logs
@@ -18,7 +18,7 @@ services:
       - PYTHONPATH=/app
     command: >
       python src/training/train_with_tracking.py
-      --data-path data-pipeline/data/processed/processed_discharge_summaries.csv
+      --data-path data_pipeline/data/processed/processed_discharge_summaries.csv
       --config configs/gemini_config.json
       --output-dir models/gemini
     networks:

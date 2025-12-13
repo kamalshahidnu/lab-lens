@@ -50,7 +50,7 @@ python scripts/setup_gemini_api_key.py
 
 ```bash
 python src/training/train_with_tracking.py \
-  --data-path data-pipeline/data/processed/processed_discharge_summaries.csv \
+  --data-path data_pipeline/data/processed/processed_discharge_summaries.csv \
   --config configs/gemini_config.json \
   --output-dir models/gemini \
   --enable-tuning \
@@ -80,7 +80,7 @@ from src.training import CompleteModelTrainer
 
 trainer = CompleteModelTrainer()
 train_df, val_df, test_df = trainer.load_data_from_pipeline(
-    data_path='data-pipeline/data/processed/processed_discharge_summaries.csv',
+    data_path='data_pipeline/data/processed/processed_discharge_summaries.csv',
     train_split=0.8,
     val_split=0.1
 )
@@ -100,7 +100,7 @@ trainer = CompleteModelTrainer(
 )
 
 results = trainer.train_and_evaluate(
-    data_path='data-pipeline/data/processed/processed_discharge_summaries.csv'
+    data_path='data_pipeline/data/processed/processed_discharge_summaries.csv'
 )
 ```
 
@@ -443,7 +443,7 @@ Test results are saved to `test_results.json` by default.
 #### 1. Loading Data from Data Pipeline
 - **Status**: ✅ **COMPLETE**
 - **Location**: `src/training/train_with_tracking.py`, `src/training/train_gemini.py`
-- **Details**: Code loads data from `data-pipeline/data/processed/processed_discharge_summaries.csv` with proper versioning
+- **Details**: Code loads data from `data_pipeline/data/processed/processed_discharge_summaries.csv` with proper versioning
 
 #### 2. Training and Selecting Best Model
 - **Status**: ✅ **COMPLETE**
@@ -461,7 +461,7 @@ Test results are saved to `test_results.json` by default.
 
 #### 4. Model Bias Detection (Using Slicing Techniques)
 - **Status**: ✅ **COMPLETE**
-- **Location**: `src/training/model_bias_detection.py`, `data-pipeline/scripts/bias_detection.py`
+- **Location**: `src/training/model_bias_detection.py`, `data_pipeline/scripts/bias_detection.py`
 - **Details**:
   - Demographic slicing (gender, ethnicity, age)
   - Performance metrics across slices
@@ -627,8 +627,8 @@ chest_xray_classifier = pipeline(
 
 Use DVC for data versioning:
 ```bash
-dvc add data-pipeline/data/processed/processed_discharge_summaries.csv
-git add data-pipeline/data/processed/processed_discharge_summaries.csv.dvc
+dvc add data_pipeline/data/processed/processed_discharge_summaries.csv
+git add data_pipeline/data/processed/processed_discharge_summaries.csv.dvc
 ```
 
 ### 2. Experiment Naming
@@ -714,7 +714,7 @@ echo "GOOGLE_API_KEY=your-key" >> .env
 python scripts/test_all_models.py --image-path /absolute/path/to/image.jpg
 
 # Or relative path from project root
-python scripts/test_all_models.py --image-path data-pipeline/data/raw/images/xray.jpg
+python scripts/test_all_models.py --image-path data/raw/images/xray.jpg
 ```
 
 #### Issue: NumPy compatibility errors

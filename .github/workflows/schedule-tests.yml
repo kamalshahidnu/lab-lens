@@ -28,7 +28,7 @@ jobs:
 
       - name: Run full test suite
         run: |
-          pytest tests/ -v --cov=src --cov=data_preprocessing --cov=model_development --cov-report=xml
+          pytest tests/ -v --cov=src --cov=model_development --cov-report=xml
 
       - name: Upload test results
         uses: actions/upload-artifact@v3

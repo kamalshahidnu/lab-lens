@@ -30,7 +30,7 @@ The risk prediction module analyzes medical discharge summaries and predicts pat
 ```bash
 # Predict risk for processed data
 python src/training/risk_prediction.py \
-    --input data-pipeline/data/processed/processed_discharge_summaries.csv \
+    --input data_pipeline/data/processed/processed_discharge_summaries.csv \
     --output models/gemini/risk_predictions.csv \
     --limit 100
 ```
@@ -40,7 +40,7 @@ python src/training/risk_prediction.py \
 ```bash
 # Use Gemini for more accurate risk prediction
 python src/training/risk_prediction.py \
-    --input data-pipeline/data/processed/processed_discharge_summaries.csv \
+    --input data_pipeline/data/processed/processed_discharge_summaries.csv \
     --output models/gemini/risk_predictions.csv \
     --limit 100 \
     --use-gemini
@@ -51,7 +51,7 @@ python src/training/risk_prediction.py \
 ```bash
 # Generate summaries AND predict risk in one step
 python scripts/train_with_risk_prediction.py \
-    --input data-pipeline/data/processed/processed_discharge_summaries.csv \
+    --input data_pipeline/data/processed/processed_discharge_summaries.csv \
     --output models/gemini/summaries_with_risk.csv \
     --limit 100
 ```

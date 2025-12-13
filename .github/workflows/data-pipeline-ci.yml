@@ -5,19 +5,19 @@ on:
     branches:
       - main
     paths:
-      - 'data_preprocessing/**'
+      - 'data_pipeline/**'
       - 'src/utils/**'
   push:
     branches:
       - main
     paths:
-      - 'data_preprocessing/**'
+      - 'data_pipeline/**'
       - 'src/utils/**'
   workflow_dispatch:
 
 jobs:
-  test-preprocessing:
-    name: Test Data Preprocessing
+  test-pipeline:
+    name: Test Data Pipeline
     runs-on: ubuntu-latest
     
     steps:
@@ -38,19 +38,19 @@ jobs:
 
       - name: Run preprocessing tests
         run: |
-          pytest data_preprocessing/tests/ -v --cov=data_preprocessing --cov-report=xml
+          pytest data_pipeline/tests/ -v --cov-report=xml
 
-      - name: Test preprocessing pipeline
+      - name: Test pipeline CLI
         run: |
-          python data_preprocessing/scripts/main_pipeline.py --help || true
+          python data_pipeline/scripts/main_pipeline.py --help || true
 
       - name: Validate imports
         run: |
-          python -c "from data_preprocessing.scripts.preprocessing import MIMICPreprocessor; print('✅ Preprocessing imports OK')"
-          python -c "from data_preprocessing.scripts.validation import MIMICDataValidator; print('✅ Validation imports OK')"
+          python -c "import sys; sys.path.insert(0, 'data_pipeline/scripts'); import preprocessing; print('✅ preprocessing.py import OK')"
+          python -c "import sys; sys.path.insert(0, 'data_pipeline/scripts'); import validation; print('✅ validation.py import OK')"
 
-  lint-preprocessing:
-    name: Lint Data Preprocessing
+  lint-pipeline:
+    name: Lint Data Pipeline
     runs-on: ubuntu-latest
     
     steps:
@@ -68,9 +68,9 @@ jobs:
 
       - name: Check code formatting
         run: |
-          black --check data_preprocessing/
-          isort --check-only data_preprocessing/
+          black --check data_pipeline/scripts/
+          isort --check-only data_pipeline/scripts/
 
       - name: Lint code
         run: |
-          flake8 data_preprocessing/ --max-line-length=127 --extend-ignore=E203,W503
+          flake8 data_pipeline/scripts/ --max-line-length=127 --extend-ignore=E203,W503

@@ -71,13 +71,13 @@ Test with a small dataset first:
 # Create test dataset (first 10 records)
 python -c "
 import pandas as pd
-df = pd.read_csv('data-pipeline/data/processed/processed_discharge_summaries.csv')
-df.head(10).to_csv('data-pipeline/data/processed/test_discharge_summaries.csv', index=False)
+df = pd.read_csv('data_pipeline/data/processed/processed_discharge_summaries.csv')
+df.head(10).to_csv('data_pipeline/data/processed/test_discharge_summaries.csv', index=False)
 print('Created test dataset with 10 records')
 "
 
 # Test with smaller dataset
-python scripts/quick_test_rag.py --hadm-id 130656 --question "What are my diagnoses?" --data-path data-pipeline/data/processed/test_discharge_summaries.csv
+python scripts/quick_test_rag.py --hadm-id 130656 --question "What are my diagnoses?" --data-path data_pipeline/data/processed/test_discharge_summaries.csv
 ```
 
 ## Example Questions
@@ -142,7 +142,7 @@ from src.rag.patient_qa import PatientQA
 
 # Single-patient mode (recommended)
 qa = PatientQA(
-    data_path="data-pipeline/data/processed/processed_discharge_summaries.csv",
+    data_path="data_pipeline/data/processed/processed_discharge_summaries.csv",
     hadm_id=130656  # Loads only this patient's data
 )
 
@@ -152,7 +152,7 @@ print(result['answer'])
 
 # All records mode
 qa = PatientQA(
-    data_path="data-pipeline/data/processed/processed_discharge_summaries.csv"
+    data_path="data_pipeline/data/processed/processed_discharge_summaries.csv"
 )
 
 # Ask with patient filter
@@ -185,7 +185,7 @@ rag = RAGSystem(
     embedding_model="all-MiniLM-L6-v2",
     chunk_size=500,
     chunk_overlap=50,
-    data_path="data-pipeline/data/processed/processed_discharge_summaries.csv",
+    data_path="data_pipeline/data/processed/processed_discharge_summaries.csv",
     hadm_id=130656  # Single-patient mode
 )
 
@@ -390,5 +390,4 @@ for question, result in zip(questions, results):
 ## Related Documentation
 
 - [API Setup Guide](API_SETUP.md) - Setting up Gemini API
-- [Model Development Guide](MODEL_DEVELOPMENT_GUIDE.md) - Model development
-- [Testing Guide](MODEL_TESTING_GUIDE.md) - Testing procedures
+- [Model Guide](MODEL_GUIDE.md) - Model development, testing, and deployment

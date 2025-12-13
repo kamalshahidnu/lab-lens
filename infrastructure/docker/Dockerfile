@@ -25,9 +25,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p data-pipeline/data/raw \
-    data-pipeline/data/processed \
-    data-pipeline/logs \
+RUN mkdir -p data_pipeline/data/raw \
+    data_pipeline/data/processed \
+    data_pipeline/logs \
     models/gemini \
     mlruns \
     logs
@@ -55,7 +55,7 @@ EXPOSE 5000
 
 # Default training command
 CMD ["python", "src/training/train_with_tracking.py", \
-     "--data-path", "data-pipeline/data/processed/processed_discharge_summaries.csv", \
+     "--data-path", "data_pipeline/data/processed/processed_discharge_summaries.csv", \
      "--config", "configs/gemini_config.json"]
 
 # ============================================

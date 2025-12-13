@@ -61,7 +61,7 @@ The CI/CD pipeline consists of multiple workflows that handle different aspects 
 ### 4. Data Pipeline CI (`data-pipeline-ci.yml`)
 
 **Triggers:**
-- Changes to `data_preprocessing/` directory
+- Changes to `data_pipeline/` directory
 - Manual workflow dispatch
 
 **Jobs:**

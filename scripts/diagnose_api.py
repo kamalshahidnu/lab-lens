@@ -158,7 +158,7 @@ def test_image_analysis():
     
     # Try to find a test image
     test_dirs = [
-        Path('data-pipeline/data/raw/images'),
+        Path('data/raw/images'),
         Path('test_images'),
         Path('samples'),
         Path.home() / 'Downloads'
@@ -179,7 +179,7 @@ def test_image_analysis():
     if not test_image:
         print('⚠️  No test image found')
         print('   Skipping image analysis test')
-        print('   (Place an image in data-pipeline/data/raw/images/ to test)')
+        print('   (Place an image in data/raw/images/ to test)')
         return False
     
     print(f'Found test image: {test_image}')

@@ -413,7 +413,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Prepare data with enhanced clinical narratives')
     parser.add_argument('--input', type=str, 
-        default='data-pipeline/data/processed/processed_discharge_summaries.csv',
+        default='data_pipeline/data/processed/processed_discharge_summaries.csv',
         help='Input CSV file')
     parser.add_argument('--output', type=str, 
         default='model-development/data/model_ready',

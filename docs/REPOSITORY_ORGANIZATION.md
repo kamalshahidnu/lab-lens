@@ -21,7 +21,7 @@ The repository now follows standard open-source project structure:
 lab-lens/
 ├── .github/              # GitHub workflows and templates
 ├── src/                  # Source code
-├── data-pipeline/        # Data processing pipeline
+├── data_pipeline/ # Data processing pipeline (single source of truth)
 ├── scripts/              # Utility scripts
 ├── tests/                # Unit tests
 ├── docs/                 # Documentation
@@ -42,7 +42,7 @@ lab-lens/
 
 ## 🧹 Cleanup Actions
 
-1. ✅ Moved temporary documentation to `docs/archive/`
+1. ✅ Removed temporary documentation files
 2. ✅ Removed temporary files (`temp_medical_text.txt`)
 3. ✅ Organized documentation structure
 4. ✅ Updated `.gitignore` for better coverage
@@ -51,7 +51,7 @@ lab-lens/
 
 - **Source Code**: 19 Python files across 3 modules
 - **Documentation**: 11+ markdown files
-- **Tests**: 5 test files (2 in tests/, 3 in data-pipeline/tests/)
+- **Tests**: Unit tests in `tests/` and `data_pipeline/tests/`
 - **Scripts**: 9 utility scripts
 - **CI/CD**: 1 workflow file
 - **Docker**: 3 files (Dockerfile, docker-compose.yml, .dockerignore)

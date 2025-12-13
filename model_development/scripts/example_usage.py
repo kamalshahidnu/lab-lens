@@ -31,7 +31,7 @@ def example_setup():
     
     # Process data with Gemini
     results = trainer.process_data(
-        data_path='data-pipeline/data/processed/processed_discharge_summaries.csv'
+        data_path='data_pipeline/data/processed/processed_discharge_summaries.csv'
     )
     
     print(f"\nProcessing completed!")
@@ -81,7 +81,7 @@ def example_batch_processing():
     print("=" * 60)
     
     # Load data
-    df = pd.read_csv('data-pipeline/data/processed/processed_discharge_summaries.csv')
+    df = pd.read_csv('data_pipeline/data/processed/processed_discharge_summaries.csv')
     
     # Take a small sample for demonstration
     df_sample = df.head(10)
@@ -110,7 +110,7 @@ def example_batch_processing():
         print("-" * 60)
     
     # Save results
-    output_path = 'data-pipeline/data/processed/summarized_sample.csv'
+    output_path = 'data_pipeline/data/processed/summarized_sample.csv'
     df_summarized.to_csv(output_path, index=False)
     print(f"\nResults saved to: {output_path}")
 

@@ -46,7 +46,7 @@ echo "GEMINI_API_KEY=your-api-key-here" > .env
 streamlit run scripts/file_qa_web.py
 ```
 
-For detailed setup instructions, see **[WEB_INTERFACE_SETUP.md](./WEB_INTERFACE_SETUP.md)**
+For detailed setup instructions, see **[WEB_INTERFACE_SETUP.md](./model_deployment/docs/WEB_INTERFACE_SETUP.md)**
 
 **Features:**
 - Upload PDF/text documents and ask questions
@@ -208,17 +208,11 @@ lab-lens/
 │   ├── processed/                     # Processed/cleaned data
 │   └── external/                      # External datasets
 │
-├── 📁 data_preprocessing/            # Data preprocessing pipeline
-│   ├── configs/                       # Preprocessing configurations
-│   ├── scripts/                       # Preprocessing scripts
-│   │   ├── data_acquisition.py        # Data acquisition from BigQuery
-│   │   ├── preprocessing.py           # Data cleaning
-│   │   ├── validation.py              # Data validation
-│   │   ├── feature_engineering.py     # Feature engineering
-│   │   ├── bias_detection.py          # Bias detection
-│   │   └── main_pipeline.py           # Main orchestration
-│   ├── notebooks/                     # Exploration notebooks
-│   └── tests/                         # Preprocessing tests
+├── 📁 data_pipeline/           # Data pipeline (single source of truth)
+│   ├── configs/                       # Pipeline configuration
+│   ├── scripts/                       # Pipeline scripts (preprocess → validate → features → bias)
+│   ├── notebooks/                     # Data acquisition notebook
+│   └── tests/                         # Pipeline unit tests
 │
 ├── 📁 model_development/             # Model training and development
 │   ├── configs/                       # Training configurations
@@ -302,7 +296,7 @@ source .venv/bin/activate  # On Mac/Linux
 .venv\Scripts\activate     # On Windows
 
 # Install dependencies
-pip install -r data-pipeline/requirements.txt
+pip install -r data_pipeline/requirements.txt
 ```
 
 ### GCP Authentication
@@ -321,16 +315,16 @@ gcloud config set project YOUR_PROJECT_ID
 
 ```bash
 # Run complete pipeline
-python data-pipeline/scripts/main_pipeline.py
+python data_pipeline/scripts/main_pipeline.py
 
 # Run with custom configuration
-python data-pipeline/scripts/main_pipeline.py --config data-pipeline/configs/pipeline_config.json
+python data_pipeline/scripts/main_pipeline.py --config data_pipeline/configs/pipeline_config.json
 
 # Run specific steps only
-python data-pipeline/scripts/main_pipeline.py --skip-preprocessing --skip-validation
+python data_pipeline/scripts/main_pipeline.py --skip-preprocessing --skip-validation
 
 # Run with custom paths
-python data-pipeline/scripts/main_pipeline.py \
+python data_pipeline/scripts/main_pipeline.py \
   --input-path /path/to/raw/data \
   --output-path /path/to/processed/data \
   --logs-path /path/to/logs
@@ -578,7 +572,7 @@ from src.rag.patient_qa import PatientQA
 
 # Initialize with single patient (loads only that patient's record)
 qa = PatientQA(
-    data_path="data-pipeline/data/processed/processed_discharge_summaries.csv",
+    data_path="data_pipeline/data/processed/processed_discharge_summaries.csv",
     hadm_id=130656  # Single-patient mode
 )
 
@@ -604,7 +598,7 @@ print(f"Sources: {len(result['sources'])} sections found")
 
 3. **Processed Data**: Ensure discharge summaries are processed:
    ```bash
-   python data-pipeline/scripts/main_pipeline.py
+   python data_pipeline/scripts/main_pipeline.py
    ```
 
 ### Single-Patient Mode Benefits
@@ -670,7 +664,7 @@ pip install sentence-transformers faiss-cpu
 
 ## 📚 Documentation
 
-All documentation is organized in the [`docs/`](docs/) directory. Key guides:
+General documentation is organized in the [`docs/`](docs/) directory. Pipeline-specific docs live next to their pipelines (e.g. [`model_deployment/docs/`](model_deployment/docs/) and [`infrastructure/ci_cd/README.md`](infrastructure/ci_cd/README.md)). Key guides:
 
 ### Getting Started
 - **[API Setup Guide](docs/API_SETUP.md)** - Setting up Gemini API keys
@@ -678,8 +672,7 @@ All documentation is organized in the [`docs/`](docs/) directory. Key guides:
 - **[BigQuery Setup](docs/BIGQUERY_SETUP.md)** - Setting up BigQuery access
 
 ### User Guides
-- **[Model Testing Guide](docs/MODEL_TESTING_GUIDE.md)** - How to test models
-- **[Model Development Guide](docs/MODEL_DEVELOPMENT_GUIDE.md)** - Model development
+- **[Model Guide](docs/MODEL_GUIDE.md)** - Model development, testing, and deployment
 - **[File Q&A Guide](docs/FILE_QA_GUIDE.md)** - File-based Q&A system
 - **[Web Interface Guide](docs/WEB_INTERFACE_GUIDE.md)** - Web interface usage
 
@@ -723,8 +716,8 @@ pip install -r requirements-dev.txt
 pre-commit install
 
 # Run code formatting
-black src/ data-pipeline/scripts/
-isort src/ data-pipeline/scripts/
+black src/ data_pipeline/scripts/
+isort src/ data_pipeline/scripts/
 ```
 
 ### Contribution Guidelines

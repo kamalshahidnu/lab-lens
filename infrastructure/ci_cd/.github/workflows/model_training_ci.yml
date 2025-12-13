@@ -45,7 +45,7 @@ jobs:
     
     - name: Check data availability
       run: |
-        if [ ! -f "data-pipeline/data/processed/processed_discharge_summaries.csv" ]; then
+        if [ ! -f "data_pipeline/data/processed/processed_discharge_summaries.csv" ]; then
           echo "Warning: Processed data not found. Pipeline may need data preparation step."
           exit 0
         fi
@@ -55,7 +55,7 @@ jobs:
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       run: |
         python src/training/train_with_tracking.py \
-          --data-path data-pipeline/data/processed/processed_discharge_summaries.csv \
+          --data-path data_pipeline/data/processed/processed_discharge_summaries.csv \
           --config configs/gemini_config.json \
           --output-dir models/gemini \
           --run-name "ci-run-${{ github.run_number }}" \
@@ -73,7 +73,7 @@ jobs:
         import pandas as pd
         
         # Load data
-        df = pd.read_csv('data-pipeline/data/processed/processed_discharge_summaries.csv')
+        df = pd.read_csv('data_pipeline/data/processed/processed_discharge_summaries.csv')
         
         # Sample for validation
         df_sample = df.head(10)
@@ -108,7 +108,7 @@ jobs:
         import pandas as pd
         
         # Load data
-        df = pd.read_csv('data-pipeline/data/processed/processed_discharge_summaries.csv')
+        df = pd.read_csv('data_pipeline/data/processed/processed_discharge_summaries.csv')
         
         # Sample for bias detection
         df_sample = df.head(20)

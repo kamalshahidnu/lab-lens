@@ -100,7 +100,7 @@ python scripts/acquire_mimic3_bigquery.py [OPTIONS]
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--limit N` | Maximum number of records | All records |
-| `--output PATH` | Output file path | `data-pipeline/data/raw/mimic_discharge_labs.csv` |
+| `--output PATH` | Output file path | `data_pipeline/data/raw/mimic_discharge_labs.csv` |
 | `--format FORMAT` | Output format (`csv` or `parquet`) | `csv` |
 | `--no-demographics` | Exclude patient demographics | Include |
 | `--no-labs` | Exclude lab results | Include |
@@ -155,17 +155,17 @@ The script fetches discharge summaries with the following joins:
 
 ## Integration with Pipeline
 
-The fetched data is saved to `data-pipeline/data/raw/mimic_discharge_labs.csv` by default, which is the expected input for the preprocessing pipeline:
+The fetched data is saved to `data_pipeline/data/raw/mimic_discharge_labs.csv` by default, which is the expected input for the preprocessing pipeline:
 
 ```bash
 # 1. Fetch data from BigQuery
 python scripts/acquire_mimic3_bigquery.py --limit 5000
 
 # 2. Run preprocessing
-python data-pipeline/scripts/preprocessing.py
+python data_pipeline/scripts/preprocessing.py
 
 # 3. Run full pipeline
-python data-pipeline/scripts/main_pipeline.py
+python data_pipeline/scripts/main_pipeline.py
 ```
 
 ## Troubleshooting
@@ -238,7 +238,7 @@ This is the easiest method. Credentials are stored locally and automatically use
 
 ### Method 3: OAuth 2.0 (For Notebooks)
 
-See `data-pipeline/notebooks/data_acquisition.ipynb` for OAuth flow.
+See `data_pipeline/notebooks/data_acquisition.ipynb` for OAuth flow.
 
 ## Cost Considerations
 
@@ -260,7 +260,7 @@ After fetching data:
 
 1. **Preprocess data:**
    ```bash
-   python data-pipeline/scripts/preprocessing.py
+   python data_pipeline/scripts/preprocessing.py
    ```
 
 2. **Train model:**

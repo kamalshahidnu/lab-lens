@@ -21,8 +21,8 @@ env/
 *.swo
 
 # Data (large files)
-data-pipeline/data/raw/*.csv
-data-pipeline/data/processed/*.csv
+data_pipeline/data/raw/*.csv
+data_pipeline/data/processed/*.csv
 *.csv
 *.parquet
 *.pkl

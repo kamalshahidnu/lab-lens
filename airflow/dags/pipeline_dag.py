@@ -30,13 +30,13 @@ def get_project_root():
     """Find the Lab Lens project root directory"""
     current = Path(__file__).resolve().parent
     while current != current.parent:
-        if (current / 'data-pipeline').exists():
+        if (current / 'data_pipeline').exists():
             return str(current)
         current = current.parent
     return str(Path.cwd())
 
 PROJECT_ROOT = get_project_root()
-SCRIPTS_DIR = os.path.join(PROJECT_ROOT, 'data-pipeline', 'scripts')
+SCRIPTS_DIR = os.path.join(PROJECT_ROOT, 'data_pipeline', 'scripts')
 
 # Task functions
 
@@ -82,7 +82,7 @@ def run_validation_task(**context):
     
     # Parse validation score from output
     import json
-    report_path = os.path.join(PROJECT_ROOT, 'data-pipeline/logs/validation_report.json')
+    report_path = os.path.join(PROJECT_ROOT, 'data_pipeline/logs/validation_report.json')
     if os.path.exists(report_path):
         with open(report_path, 'r') as f:
             report = json.load(f)
@@ -140,7 +140,7 @@ def run_bias_detection_task(**context):
     
     # Parse bias score and push to XCom
     import json
-    report_path = os.path.join(PROJECT_ROOT, 'data-pipeline/logs/bias_report.json')
+    report_path = os.path.join(PROJECT_ROOT, 'data_pipeline/logs/bias_report.json')
     if os.path.exists(report_path):
         with open(report_path, 'r') as f:
             report = json.load(f)
@@ -172,7 +172,7 @@ def run_bias_mitigation_task(**context):
     
     # Parse mitigation results
     import json
-    report_path = os.path.join(PROJECT_ROOT, 'data-pipeline/logs/bias_mitigation_report.json')
+    report_path = os.path.join(PROJECT_ROOT, 'data_pipeline/logs/bias_mitigation_report.json')
     if os.path.exists(report_path):
         with open(report_path, 'r') as f:
             report = json.load(f)
@@ -187,7 +187,7 @@ def check_data_availability(**context):
     """
     Task 0: Check if raw data is available before starting pipeline
     """
-    data_path = os.path.join(PROJECT_ROOT, 'data-pipeline/data/raw/mimic_discharge_labs.csv')
+    data_path = os.path.join(PROJECT_ROOT, 'data_pipeline/data/raw/mimic_discharge_labs.csv')
     
     if not os.path.exists(data_path):
         raise FileNotFoundError(
@@ -230,7 +230,7 @@ def generate_pipeline_summary(**context):
     
     # Save summary
     import json
-    summary_path = os.path.join(PROJECT_ROOT, 'data-pipeline/logs/airflow_pipeline_summary.json')
+    summary_path = os.path.join(PROJECT_ROOT, 'data_pipeline/logs/airflow_pipeline_summary.json')
     with open(summary_path, 'w') as f:
         json.dump(summary, f, indent=2)
     

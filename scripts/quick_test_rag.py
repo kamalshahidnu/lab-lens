@@ -20,7 +20,7 @@ def quick_test(hadm_id: int, question: str = None, data_path: str = None):
     """Quick test of RAG system with minimal setup"""
     
     if data_path is None:
-        data_path = "data-pipeline/data/processed/processed_discharge_summaries.csv"
+        data_path = "data_pipeline/data/processed/processed_discharge_summaries.csv"
     
     data_path = Path(data_path)
     if not data_path.exists():

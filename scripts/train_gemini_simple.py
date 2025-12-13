@@ -163,7 +163,7 @@ def main():
     
     parser = argparse.ArgumentParser(description='Train Gemini model on MIMIC-III data')
     parser.add_argument('--input', type=str, 
-                       default='data-pipeline/data/processed/processed_discharge_summaries.csv',
+                       default='data_pipeline/data/processed/processed_discharge_summaries.csv',
                        help='Input CSV file path')
     parser.add_argument('--output', type=str,
                        default='models/gemini/processed_with_summaries.csv',

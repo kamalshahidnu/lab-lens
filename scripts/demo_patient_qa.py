@@ -24,7 +24,7 @@ def demo():
     print("Note: First run will take a few minutes to create embeddings.\n")
     
     # Initialize system
-    data_path = "data-pipeline/data/processed/processed_discharge_summaries.csv"
+    data_path = "data_pipeline/data/processed/processed_discharge_summaries.csv"
     
     if not Path(data_path).exists():
         print(f"❌ Data file not found: {data_path}")

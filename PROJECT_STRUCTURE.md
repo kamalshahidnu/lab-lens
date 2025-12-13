@@ -19,26 +19,13 @@ lab-lens/
 │   ├── external/                  # External datasets
 │   └── .gitkeep
 │
-├── data_preprocessing/            # Data preprocessing pipeline
-│   ├── __init__.py
-│   ├── README.md                  # Preprocessing documentation
-│   ├── configs/                   # Preprocessing configurations
+├── data_pipeline/          # Data pipeline (single source of truth)
+│   ├── README.md                  # Pipeline documentation
+│   ├── configs/                   # Pipeline configuration
 │   │   └── pipeline_config.json
-│   ├── scripts/                   # Preprocessing scripts
-│   │   ├── __init__.py
-│   │   ├── data_acquisition.py   # Data acquisition from BigQuery
-│   │   ├── preprocessing.py      # Data cleaning and preprocessing
-│   │   ├── validation.py         # Data validation
-│   │   ├── feature_engineering.py # Feature engineering
-│   │   ├── bias_detection.py     # Bias detection
-│   │   ├── automated_bias_handler.py # Bias mitigation
-│   │   └── main_pipeline.py      # Main orchestration
-│   ├── notebooks/                 # Exploration notebooks
-│   │   └── data_acquisition.ipynb
-│   └── tests/                     # Preprocessing tests
-│       ├── __init__.py
-│       ├── test_preprocessing.py
-│       └── test_validation.py
+│   ├── scripts/                   # Pipeline scripts (preprocess → validate → features → bias)
+│   ├── notebooks/                 # Data acquisition notebook
+│   └── tests/                     # Pipeline unit tests
 │
 ├── model_development/             # Model training and development
 │   ├── __init__.py
@@ -146,7 +133,7 @@ lab-lens/
 
 ## Workflow
 
-1. **Data Preprocessing**: `data_preprocessing/` - Clean and prepare data
+1. **Data Pipeline**: `data_pipeline/` - Preprocess, validate, engineer features, detect/mitigate bias
 2. **Model Development**: `model_development/` - Train and validate models
 3. **Model Deployment**: `model_deployment/` - Deploy models to production
 4. **Monitoring**: `monitoring/` - Monitor deployed models
@@ -157,11 +144,11 @@ lab-lens/
 After restructuring, update imports to use the new structure:
 
 ```python
-# Old
-from src.utils.logging_config import get_logger
-from data-pipeline.scripts.preprocessing import MIMICPreprocessor
+# The Swetha data pipeline scripts are plain Python modules under
+# `data_pipeline/scripts/` (not a Python package). Import them by
+# adding that folder to your Python path:
+import sys
 
-# New
-from src.utils.logging_config import get_logger
-from data_preprocessing.scripts.preprocessing import MIMICPreprocessor
+sys.path.insert(0, "data_pipeline/scripts")
+from preprocessing import MIMICPreprocessor
 ```

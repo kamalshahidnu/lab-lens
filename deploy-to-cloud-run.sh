@@ -43,7 +43,7 @@ gcloud config set project $PROJECT_ID
 # Build and push using Cloud Build config
 echo -e "${YELLOW}🔨 Building container...${NC}"
 gcloud builds submit \
-  --config=cloudbuild.yaml \
+  --config=infrastructure/docker/cloudbuild.yaml \
   --timeout=20m
 
 # Check if secret exists

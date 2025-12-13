@@ -85,7 +85,7 @@ Build and run the Streamlit web app with Docker:
 
 ```bash
 cd infrastructure/docker
-docker build -f Dockerfile.cloudrun -t lab-lens-web:latest .
+docker build --build-arg SKIP_MODEL_DOWNLOAD=true -f Dockerfile.cloudrun -t lab-lens-web:latest .
 docker run -p 8501:8501 lab-lens-web:latest
 ```
 
@@ -95,7 +95,7 @@ Build and run the FastAPI backend with Docker:
 
 ```bash
 cd infrastructure/docker
-docker build -f Dockerfile.api -t lab-lens-api:latest .
+docker build --build-arg SKIP_MODEL_DOWNLOAD=true -f Dockerfile.api -t lab-lens-api:latest .
 docker run -p 8080:8080 -e GEMINI_API_KEY=your-key lab-lens-api:latest
 ```
 
@@ -107,3 +107,4 @@ Both services have automated deployment via GitHub Actions:
 - **API Backend**: `.github/workflows/deploy-api-cloud-run.yml`
 
 Deployments are triggered automatically on push to `main` branch when relevant files change.
+

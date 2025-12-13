@@ -3,6 +3,8 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
+      - '--build-arg'
+      - 'SKIP_MODEL_DOWNLOAD=true'
       - '-f'
       - 'infrastructure/docker/Dockerfile.api'
       - '-t'
@@ -32,3 +34,4 @@ options:
   substitution_option: 'ALLOW_LOOSE'
 
 timeout: '1200s'
+

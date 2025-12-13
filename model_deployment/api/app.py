@@ -4,6 +4,10 @@ from pydantic import BaseModel
 import logging
 import os
 import threading
+import time
+import json
+
+from monitoring.model_monitoring import InferenceMonitor
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +41,7 @@ class SummaryResponse(BaseModel):
 # Global variable to hold the model
 summarizer = None
 summarizer_init_lock = threading.Lock()
+monitor = InferenceMonitor()
 
 @app.on_event("startup")
 async def load_model():
@@ -114,6 +119,7 @@ def summarize(request: DischargeRequest):
     if not request.text or len(request.text.strip()) < 50:
         raise HTTPException(status_code=400, detail="Text too short (minimum 50 characters)")
     
+    start = time.time()
     try:
         logger.info(f"Processing summary request (text length: {len(request.text)} chars)")
         summarizer_instance = get_or_init_summarizer()
@@ -128,6 +134,17 @@ def summarize(request: DischargeRequest):
         summary = result.get('final_summary', '')
         diagnosis = result.get('extracted_data', {}).get('diagnosis', 'Unknown')
         bart_summary = result.get('summary', '')  # Changed from 'bart_summary' to 'summary'
+
+        latency_ms = int((time.time() - start) * 1000)
+        event = monitor.record(
+            input_text=request.text,
+            output_text=summary,
+            latency_ms=latency_ms,
+            success=True,
+            error_type=None,
+        )
+        if event.get("enabled"):
+            logger.info("MODEL_MONITOR " + json.dumps(event, ensure_ascii=False))
         
         return SummaryResponse(
             summary=summary,
@@ -137,7 +154,26 @@ def summarize(request: DischargeRequest):
     
     except Exception as e:
         logger.error(f"Error during summarization: {e}")
+        latency_ms = int((time.time() - start) * 1000)
+        event = monitor.record(
+            input_text=request.text,
+            output_text="",
+            latency_ms=latency_ms,
+            success=False,
+            error_type=type(e).__name__,
+        )
+        if event.get("enabled"):
+            logger.info("MODEL_MONITOR " + json.dumps(event, ensure_ascii=False))
         raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
+
+
+@app.get("/monitoring/status")
+def monitoring_status():
+    """
+    Model monitoring status: rolling stats + drift flags for the summarizer.
+    Intended for debugging/validation (no sensitive payloads).
+    """
+    return monitor.status()
 
 @app.get("/info")
 def info():

@@ -78,6 +78,14 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           echo "🚀 Deploying to Cloud Run..."
+          # Discover the deployed API URL (if present) so the Streamlit frontend can call it.
+          API_URL=$(gcloud run services describe lab-lens-api --region $REGION --project $PROJECT_ID --format='value(status.url)' 2>/dev/null || true)
+          if [ -n "$API_URL" ]; then
+            echo "🔗 Using API URL for frontend integration: $API_URL"
+          else
+            echo "⚠️  Could not resolve lab-lens-api URL; frontend will run in standalone mode"
+          fi
+
           gcloud run deploy $SERVICE_NAME \
             --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
             --platform managed \
@@ -89,7 +97,7 @@ jobs:
             --timeout 600 \
             --max-instances 10 \
             --min-instances 0 \
-            --set-env-vars HF_HOME=/root/.cache/huggingface,TRANSFORMERS_CACHE=/root/.cache/huggingface \
+            --set-env-vars HF_HOME=/root/.cache/huggingface,TRANSFORMERS_CACHE=/root/.cache/huggingface,LAB_LENS_API_URL=$API_URL \
             --set-secrets GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_API_KEY=gemini-api-key:latest \
             --project $PROJECT_ID
 

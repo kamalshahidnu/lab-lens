@@ -9,6 +9,9 @@ import sys
 from pathlib import Path
 from typing import Dict, Optional, List
 import random
+import json
+import urllib.request
+import urllib.error
 
 # Add parent directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -39,23 +42,11 @@ except ImportError:
 
 # Try to import MedicalSummarizer for document summarization
 try:
-    import sys
-    from pathlib import Path
-    # Add project root to path to import summarizer
-    project_root = Path(__file__).parent.parent.parent
-    model_deployment_path = project_root / "model-deployment"
-    
-    if model_deployment_path.exists():
-        # Add to path for import
-        if str(project_root) not in sys.path:
-            sys.path.insert(0, str(project_root))
-        from model_deployment.deployment_pipeline.summarizer import MedicalSummarizer
-        SUMMARIZER_AVAILABLE = True
-        logger.debug("MedicalSummarizer available")
-    else:
-        SUMMARIZER_AVAILABLE = False
-        logger.debug(f"MedicalSummarizer path not found: {model_deployment_path}")
-except ImportError as e:
+    # API/backend summarizer implementation lives here in this repo.
+    from model_deployment.api.summarizer import MedicalSummarizer
+    SUMMARIZER_AVAILABLE = True
+    logger.debug("MedicalSummarizer available")
+except Exception as e:
     SUMMARIZER_AVAILABLE = False
     logger.debug(f"MedicalSummarizer not available: {e}")
 
@@ -667,14 +658,6 @@ ANSWER:"""
         Returns:
             Dictionary with summary and metadata
         """
-        summarizer = self._get_summarizer()
-        if not summarizer:
-            return {
-                'success': False,
-                'error': 'MedicalSummarizer not available',
-                'summary': None
-            }
-        
         # Get text to summarize
         if text is None:
             if not self.rag.chunks:
@@ -690,6 +673,46 @@ ANSWER:"""
             return {
                 'success': False,
                 'error': 'No text content to summarize',
+                'summary': None
+            }
+
+        # If an API backend is configured, use it (preferred on Cloud Run to keep the
+        # Streamlit container lightweight and avoid loading large ML models).
+        api_base = (os.getenv("LAB_LENS_API_URL") or os.getenv("LAB_LENS_API_BASE_URL") or "").strip()
+        if api_base:
+            try:
+                url = api_base.rstrip("/") + "/summarize"
+                payload = json.dumps({"text": text}).encode("utf-8")
+                req = urllib.request.Request(
+                    url,
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+
+                logger.info(f"Calling Lab Lens API summarizer at {url}")
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    body = resp.read().decode("utf-8")
+                    data = json.loads(body) if body else {}
+
+                # API returns: {summary, diagnosis, bart_summary}
+                return {
+                    'success': True,
+                    'summary': data.get('summary', ''),
+                    'raw_summary': data.get('bart_summary', ''),
+                    'extracted_data': {'diagnosis': data.get('diagnosis', '')},
+                    'error': None
+                }
+            except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError) as e:
+                logger.warning(f"API summarization failed ({api_base}); falling back to local summarizer: {e}")
+            except Exception as e:
+                logger.warning(f"Unexpected API summarization error; falling back to local summarizer: {e}", exc_info=True)
+
+        summarizer = self._get_summarizer()
+        if not summarizer:
+            return {
+                'success': False,
+                'error': 'MedicalSummarizer not available',
                 'summary': None
             }
         

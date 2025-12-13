@@ -95,6 +95,17 @@ class FileQA:
         self.use_vector_db = use_vector_db and CHROMADB_AVAILABLE
         self.user_id = user_id
         self.simplify_medical_terms = simplify_medical_terms and MEDICAL_UTILS_AVAILABLE
+
+        # Optional: call the deployed API backend for summarization if configured.
+        self.api_base_url = (os.getenv("LAB_LENS_API_URL") or os.getenv("LAB_LENS_API_BASE_URL") or "").strip()
+        if self.api_base_url:
+            try:
+                health_url = self.api_base_url.rstrip("/") + "/health"
+                req = urllib.request.Request(health_url, method="GET")
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    logger.info(f"✅ LAB_LENS_API_URL set and reachable (GET {health_url} -> {resp.status})")
+            except Exception as e:
+                logger.warning(f"⚠️ LAB_LENS_API_URL is set but /health check failed: {e}")
         
         logger.info("Initializing File Q&A system...")
         

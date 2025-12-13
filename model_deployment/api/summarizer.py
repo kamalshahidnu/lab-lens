@@ -24,8 +24,11 @@ from typing import Dict, List, Optional
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from sentence_transformers import SentenceTransformer
 from sklearn.neighbors import NearestNeighbors
-from google import genai
-from google.genai.errors import APIError
+
+# NOTE:
+# This project uses the `google-generativeai` SDK (imported as `google.generativeai`)
+# for Gemini calls. Do NOT import `google.genai` here; that is a different SDK
+# (`google-genai`) and will crash the container if not installed.
 
 
 

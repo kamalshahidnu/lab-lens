@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from model_deployment.api.summarizer import MedicalSummarizer
 import logging
 import os
+import threading
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -36,18 +36,54 @@ class SummaryResponse(BaseModel):
 
 # Global variable to hold the model
 summarizer = None
+summarizer_init_lock = threading.Lock()
 
 @app.on_event("startup")
 async def load_model():
-    """Load the model when the API starts"""
+    """
+    Startup hook.
+
+    IMPORTANT: On Cloud Run, loading large ML models during startup can cause
+    deploy-time failures (cold start timeouts / readiness failures). We therefore
+    keep startup lightweight and load the summarizer lazily on first request.
+
+    If you *do* want to warm the model at startup (at the cost of longer cold
+    starts), set PRELOAD_SUMMARIZER=true.
+    """
     global summarizer
+    if str(os.getenv("PRELOAD_SUMMARIZER", "")).lower() not in ("1", "true", "yes", "y"):
+        logger.info("Skipping summarizer preload (lazy-load enabled).")
+        return
+
     try:
-        logger.info("Loading Medical Summarizer...")
+        logger.info("Preloading Medical Summarizer (PRELOAD_SUMMARIZER=true)...")
+        # Import lazily so startup isn't dominated by heavy deps unless explicitly requested.
+        from model_deployment.api.summarizer import MedicalSummarizer
+
         summarizer = MedicalSummarizer(use_gpu=False)
-        logger.info("✅ Model loaded successfully!")
+        logger.info("✅ Summarizer preloaded successfully!")
     except Exception as e:
-        logger.error(f"❌ Failed to load model: {e}")
-        raise e
+        # Do not fail container startup; we'll retry lazily on first summarize request.
+        logger.error(f"❌ Summarizer preload failed; will retry lazily: {e}")
+        summarizer = None
+
+
+def get_or_init_summarizer():
+    """Thread-safe lazy initialization of the summarizer."""
+    global summarizer
+    if summarizer is not None:
+        return summarizer
+
+    with summarizer_init_lock:
+        if summarizer is not None:
+            return summarizer
+        logger.info("Lazy-loading Medical Summarizer...")
+        # Import here to avoid importing torch/transformers during container startup.
+        from model_deployment.api.summarizer import MedicalSummarizer
+
+        summarizer = MedicalSummarizer(use_gpu=False)
+        logger.info("✅ Summarizer loaded successfully (lazy).")
+        return summarizer
 
 @app.get("/")
 def root():
@@ -65,29 +101,25 @@ def root():
 @app.get("/health")
 def health():
     """Health check endpoint"""
-    if summarizer is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    
     return {
-        "status": "healthy",
-        "model_loaded": True,
+        # Always return 200 so the container can become ready on Cloud Run.
+        "status": "healthy" if summarizer is not None else "starting",
+        "model_loaded": summarizer is not None,
         "gemini_configured": bool(os.getenv("GEMINI_API_KEY"))
     }
 
 @app.post("/summarize", response_model=SummaryResponse)
 def summarize(request: DischargeRequest):
     """Generate patient-friendly summary from discharge text"""
-    if summarizer is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    
     if not request.text or len(request.text.strip()) < 50:
         raise HTTPException(status_code=400, detail="Text too short (minimum 50 characters)")
     
     try:
         logger.info(f"Processing summary request (text length: {len(request.text)} chars)")
+        summarizer_instance = get_or_init_summarizer()
         
         # Generate summary
-        result = summarizer.generate_summary(request.text)
+        result = summarizer_instance.generate_summary(request.text)
         
         # Debug: Print what keys are in result
         logger.info(f"Result keys: {list(result.keys())}")

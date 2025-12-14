@@ -28,6 +28,18 @@ Lab Lens is an end-to-end MLOps pipeline for healthcare that combines medical re
 
 ## 🌐 Web Interface Quick Start
 
+### Try the Frontend (Live Demo)
+
+Lab Lens ships with a Streamlit frontend. If a live deployment is available, use one of these URLs:
+
+- **Streamlit Community Cloud**: `https://<your-app-name>.streamlit.app`
+- **Google Cloud Run (Live)**: `https://lab-lens-web-688114176958.us-central1.run.app`
+
+If you don’t have a deployment yet, follow the deployment guide to publish the frontend:
+- **Frontend deployment guide**: [model_deployment/docs/DEPLOYMENT_GUIDE.md](./model_deployment/docs/DEPLOYMENT_GUIDE.md)
+
+### Run Locally
+
 To run the Lab Lens web interface locally:
 
 ```bash
@@ -742,7 +754,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: Check the comprehensive documentation in `/docs`
 - **Issues**: Report bugs and request features via GitHub Issues
 - **Discussions**: Join community discussions in GitHub Discussions
-- **Email**: Contact the team at lab-lens-support@example.com
+- **Email**: `kamalshahid20@gmail.com`
 
 ### Team Contacts
 - **Project Lead**: Asad Ullah Waraich

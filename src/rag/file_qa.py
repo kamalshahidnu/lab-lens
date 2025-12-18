@@ -613,9 +613,18 @@ ANSWER:"""
 
         return self.summarizer
 
+    def _clean_pdf_text(self, text: str) -> str:
+        """Clean PDF extraction artifacts like (cid:X) codes"""
+        import re
+        # Remove (cid:X) patterns - these are font encoding artifacts
+        cleaned = re.sub(r'\(cid:\d+\)', ' ', text)
+        # Normalize whitespace
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        return cleaned.strip()
+
     def summarize_document(self, text: Optional[str] = None) -> Dict:
         """
-        Generate a summary of the loaded document(s) using MedicalSummarizer
+        Generate a summary of the loaded document(s) using Gemini (preferred) or MedicalSummarizer
 
         Args:
           text: Optional text to summarize. If None, uses all loaded document chunks.
@@ -632,6 +641,33 @@ ANSWER:"""
 
         if not text or not text.strip():
             return {"success": False, "error": "No text content to summarize", "summary": None}
+
+        # Clean PDF extraction artifacts
+        text = self._clean_pdf_text(text)
+
+        # Try using Gemini for summarization first (more reliable)
+        try:
+            summary_prompt = """Please provide a comprehensive summary of this medical document. Include:
+1. Patient information (if available)
+2. Key diagnoses and findings
+3. Important test results or measurements
+4. Recommendations or treatment plans
+5. Any critical alerts or abnormal values
+
+Document:
+""" + text[:15000]  # Limit text length for API
+
+            result = self.ask_question(summary_prompt)
+            if result.get("answer") and "error" not in result.get("answer", "").lower():
+                return {
+                    "success": True,
+                    "summary": result.get("answer", ""),
+                    "raw_summary": "",
+                    "extracted_data": {},
+                    "error": None,
+                }
+        except Exception as e:
+            logger.warning(f"Gemini summarization failed, trying alternatives: {e}")
 
         # If an API backend is configured, use it (preferred on Cloud Run to keep the
         # Streamlit container lightweight and avoid loading large ML models).

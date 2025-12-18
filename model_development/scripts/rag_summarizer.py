@@ -8,6 +8,7 @@ import json
 import pickle
 from typing import Dict, List, Tuple
 
+import faiss
 import numpy as np
 import pandas as pd
 import torch

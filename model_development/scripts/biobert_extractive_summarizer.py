@@ -1,5 +1,8 @@
 # model-development/scripts/biobert_extractive_summarizer.py
 
+import numpy as np
+from transformers import AutoModel, AutoTokenizer
+
 
 class MedicalReportSummarizer:
     def __init__(self):
@@ -24,7 +27,10 @@ class MedicalReportSummarizer:
         biobert_scores = self._get_biobert_scores(sentences)
 
         # Combine scores (your features + BioBERT)
-        final_scores = [0.6 * feat_score + 0.4 * bert_score for feat_score, bert_score in zip(sentence_scores, biobert_scores)]
+        final_scores = [
+            0.6 * feat_score + 0.4 * bert_score
+            for feat_score, bert_score in zip(sentence_scores, biobert_scores)
+        ]
 
         # Select top sentences
         top_indices = np.argsort(final_scores)[-5:]  # Top 5 sentences
@@ -38,17 +44,30 @@ class MedicalReportSummarizer:
 
         # Urgent cases - prioritize severity indicators
         if features["urgency_indicator"] == 1:
-            urgency_words = ["urgent", "critical", "severe", "immediate"]
-            score += sum(2 for word in urgency_words if word in sentence.lower())
+            if any(
+                word in sentence.lower()
+                for word in ["critical", "urgent", "severe", "immediate"]
+            ):
+                score += 2.0
 
-        # Abnormal findings
-        if features["abnormal_lab_ratio"] > 0.3:
-            abnormal_words = ["abnormal", "elevated", "high", "low"]
-            score += sum(1.5 for word in abnormal_words if word in sentence.lower())
-
-        # Medication mentions (important for discharge)
-        med_score = features["kw_medications"] / 10  # Normalize
-        if any(med in sentence for med in ["mg", "medication", "dose"]):
-            score += med_score
+        # Abnormal lab values - include specific findings
+        if features["abnormal_lab_count"] > 0:
+            if any(
+                word in sentence.lower() for word in ["abnormal", "elevated", "low"]
+            ):
+                score += 1.5
 
         return score
+
+    def _get_biobert_scores(self, sentences):
+        """Get BioBERT semantic scores for sentences"""
+        scores = []
+        for sent in sentences:
+            inputs = self.tokenizer(
+                sent, return_tensors="pt", truncation=True, max_length=512
+            )
+            outputs = self.model(**inputs)
+            # Use CLS token embedding magnitude as importance
+            score = outputs.last_hidden_state[:, 0, :].mean().item()
+            scores.append(score)
+        return scores

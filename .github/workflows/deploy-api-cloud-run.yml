@@ -80,7 +80,8 @@ jobs:
         run: |
           echo "🔨 Building API container image..."
           gcloud builds submit \
-            --config=infrastructure/docker/cloudbuild-api.yaml \
+            --tag gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
+            --file infrastructure/docker/Dockerfile.api \
             --project=$PROJECT_ID \
             --timeout=20m
 

@@ -10,7 +10,7 @@ on:
       - 'infrastructure/docker/cloudbuild-api.yaml'
       - 'requirements.txt'
       - '.github/workflows/deploy-api-cloud-run.yml'
-  workflow_dispatch:  # Allow manual triggers
+  workflow_dispatch:
     inputs:
       environment:
         description: 'Deployment environment'
@@ -43,14 +43,14 @@ jobs:
       - name: Verify Secrets
         run: |
           if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
-            echo " Error: GCP_PROJECT_ID secret is not set"
+            echo "❌ Error: GCP_PROJECT_ID secret is not set"
             exit 1
           fi
           if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
-            echo " Error: GCP_SA_KEY secret is not set"
+            echo "❌ Error: GCP_SA_KEY secret is not set"
             exit 1
           fi
-          echo " Secrets verified"
+          echo "✅ Secrets verified"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -62,6 +62,20 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Capture previous revision for rollback
+        id: prev-revision
+        run: |
+          PREV_REVISION=$(gcloud run services describe $SERVICE_NAME \
+            --region $REGION \
+            --project $PROJECT_ID \
+            --format='value(status.traffic[0].revisionName)' 2>/dev/null || echo "")
+          echo "revision=$PREV_REVISION" >> $GITHUB_OUTPUT
+          if [ -n "$PREV_REVISION" ]; then
+            echo "📌 Previous revision: $PREV_REVISION"
+          else
+            echo "ℹ️ No previous revision found (first deploy)"
+          fi
+
       - name: Build and Push Container
         run: |
           echo "🔨 Building API container image..."
@@ -71,13 +85,13 @@ jobs:
             --timeout=20m
 
       - name: Deploy to Cloud Run
+        id: deploy
         run: |
           echo "🚢 Deploying API to Cloud Run..."
           
-          # Check if secret exists, create if not (optional)
+          # Check if secret exists
           if ! gcloud secrets describe gemini-api-key --project=$PROJECT_ID &> /dev/null; then
             echo "⚠️  Warning: gemini-api-key secret not found"
-            echo "   The deployment will continue, but you may need to set GEMINI_API_KEY manually"
           fi
           
           gcloud run deploy $SERVICE_NAME \
@@ -116,27 +130,46 @@ jobs:
             --project $PROJECT_ID \
             --format='value(status.url)')
           echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
-          echo " API deployed at: $SERVICE_URL"
+          echo "✅ API deployed at: $SERVICE_URL"
 
-      - name: Health Check
+      - name: Post-deploy smoke tests
+        id: smoke-test
         run: |
-          echo "🏥 Running health check..."
-          sleep 15  # Wait for service to be ready
+          SERVICE_URL="${{ steps.service-url.outputs.url }}"
+          echo "⏳ Waiting for service to be ready..."
+          sleep 15
           
-          SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
-            --region $REGION \
-            --project $PROJECT_ID \
-            --format='value(status.url)')
-          
-          # Try health check endpoint
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/health" || echo "000")
+          echo "🔍 Testing /health endpoint..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/health" --max-time 30 || echo "000")
           
           if [ "$HTTP_CODE" = "200" ]; then
-            echo " Health check passed (HTTP $HTTP_CODE)"
+            echo "✅ Health check passed (HTTP $HTTP_CODE)"
           else
-            echo "⚠️  Health check returned HTTP $HTTP_CODE (service may still be starting)"
-            echo "   Check logs: gcloud run services logs tail $SERVICE_NAME --region $REGION --project $PROJECT_ID"
+            echo "❌ Health check failed (HTTP $HTTP_CODE)"
+            exit 1
           fi
+          
+          echo "🔍 Testing /info endpoint..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/info" --max-time 30 || echo "000")
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Info endpoint passed (HTTP $HTTP_CODE)"
+          else
+            echo "⚠️ Info endpoint returned HTTP $HTTP_CODE (non-critical)"
+          fi
+
+      - name: Rollback on failure
+        if: failure() && steps.smoke-test.outcome == 'failure' && steps.prev-revision.outputs.revision != ''
+        run: |
+          PREV_REVISION="${{ steps.prev-revision.outputs.revision }}"
+          echo "🔄 Rolling back to previous revision: $PREV_REVISION"
+          gcloud run services update-traffic $SERVICE_NAME \
+            --region $REGION \
+            --project $PROJECT_ID \
+            --to-revisions $PREV_REVISION=100
+          echo "✅ Rollback complete. Traffic restored to $PREV_REVISION"
+          echo "❌ Deployment failed smoke tests - rolled back automatically"
+          exit 1
 
       - name: Comment Deployment URL on PR
         if: github.event_name == 'pull_request'

@@ -1,0 +1,52 @@
+[project]
+name = "lab-lens"
+version = "1.0.0"
+description = "AI-powered medical lab report analysis"
+requires-python = ">=3.11"
+
+[tool.black]
+line-length = 127
+target-version = ['py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | __pycache__
+  | \.eggs
+  | build
+  | dist
+  | models
+  | logs
+  | notebooks
+  | airflow
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 127
+skip_glob = ["venv/*", ".venv/*", "models/*", "logs/*", "notebooks/*", "airflow/*"]
+known_first_party = ["src", "data_pipeline", "model_development", "model_deployment", "monitoring", "scripts"]
+
+[tool.flake8]
+max-line-length = 127
+extend-ignore = ["E203", "W503"]
+exclude = [".git", "__pycache__", "venv", ".venv", "build", "dist", "models", "logs", "notebooks", "airflow"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+markers = [
+    "e2e: end-to-end smoke tests (require deployed service URLs via env)",
+]
+norecursedirs = [
+    "model_development/scripts",
+    "model_development/notebooks", 
+    "notebooks",
+    "airflow",
+    "models",
+    "logs",
+]

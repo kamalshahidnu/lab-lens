@@ -10,7 +10,7 @@ on:
       - 'src/**'
       - 'requirements.txt'
       - '.github/workflows/deploy-cloud-run.yml'
-  workflow_dispatch:  # Allow manual triggers
+  workflow_dispatch:
     inputs:
       environment:
         description: 'Deployment environment'
@@ -43,14 +43,14 @@ jobs:
       - name: Verify Secrets
         run: |
           if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
-            echo " Error: GCP_PROJECT_ID secret is not set"
+            echo "❌ Error: GCP_PROJECT_ID secret is not set"
             exit 1
           fi
           if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
-            echo " Error: GCP_SA_KEY secret is not set"
+            echo "❌ Error: GCP_SA_KEY secret is not set"
             exit 1
           fi
-          echo " Secrets verified"
+          echo "✅ Secrets verified"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -65,6 +65,20 @@ jobs:
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker
 
+      - name: Capture previous revision for rollback
+        id: prev-revision
+        run: |
+          PREV_REVISION=$(gcloud run services describe $SERVICE_NAME \
+            --region $REGION \
+            --project $PROJECT_ID \
+            --format='value(status.traffic[0].revisionName)' 2>/dev/null || echo "")
+          echo "revision=$PREV_REVISION" >> $GITHUB_OUTPUT
+          if [ -n "$PREV_REVISION" ]; then
+            echo "📌 Previous revision: $PREV_REVISION"
+          else
+            echo "ℹ️ No previous revision found (first deploy)"
+          fi
+
       - name: Build and Push Container
         run: |
           echo "🔨 Building container image..."
@@ -76,6 +90,7 @@ jobs:
         continue-on-error: false
 
       - name: Deploy to Cloud Run
+        id: deploy
         run: |
           echo "🚀 Deploying to Cloud Run..."
           gcloud run deploy $SERVICE_NAME \
@@ -94,19 +109,51 @@ jobs:
             --project $PROJECT_ID
 
       - name: Get Service URL
+        id: service-url
         run: |
           SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region $REGION --format='value(status.url)')
+          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
           echo "🚀 Deployed to: $SERVICE_URL"
-          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_OUTPUT
 
-      - name: Test Health Check
+      - name: Post-deploy smoke tests
+        id: smoke-test
         run: |
-          SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region $REGION --format='value(status.url)')
+          SERVICE_URL="${{ steps.service-url.outputs.url }}"
           echo "⏳ Waiting for service to be ready..."
-          sleep 15
-          echo "🔍 Testing health endpoint..."
-          curl -f $SERVICE_URL/_stcore/health || exit 1
-          echo " Health check passed!"
+          sleep 20
+          
+          echo "🔍 Testing Streamlit health endpoint..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/_stcore/health" --max-time 30 || echo "000")
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Health check passed (HTTP $HTTP_CODE)"
+          else
+            echo "❌ Health check failed (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          
+          echo "🔍 Testing homepage loads..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/" --max-time 30 || echo "000")
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Homepage check passed (HTTP $HTTP_CODE)"
+          else
+            echo "❌ Homepage check failed (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+
+      - name: Rollback on failure
+        if: failure() && steps.smoke-test.outcome == 'failure' && steps.prev-revision.outputs.revision != ''
+        run: |
+          PREV_REVISION="${{ steps.prev-revision.outputs.revision }}"
+          echo "🔄 Rolling back to previous revision: $PREV_REVISION"
+          gcloud run services update-traffic $SERVICE_NAME \
+            --region $REGION \
+            --project $PROJECT_ID \
+            --to-revisions $PREV_REVISION=100
+          echo "✅ Rollback complete. Traffic restored to $PREV_REVISION"
+          echo "❌ Deployment failed smoke tests - rolled back automatically"
+          exit 1
 
       - name: Comment Deployment URL
         if: github.event_name == 'pull_request'
@@ -117,5 +164,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🚀 Deployment successful!\n\nService URL: ${{ steps.deploy.outputs.SERVICE_URL }}'
+              body: '🚀 Deployment successful!\n\nService URL: ${{ steps.service-url.outputs.url }}'
             })

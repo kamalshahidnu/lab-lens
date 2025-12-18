@@ -83,8 +83,7 @@ jobs:
         run: |
           echo "🔨 Building container image..."
           gcloud builds submit \
-            --tag gcr.io/$PROJECT_ID/$SERVICE_NAME \
-            --file infrastructure/docker/Dockerfile.cloudrun \
+            --config=infrastructure/docker/cloudbuild-web.yaml \
             --timeout=20m \
             --project $PROJECT_ID
         continue-on-error: false

@@ -30,7 +30,7 @@ jobs:
   deploy:
     name: Build and Deploy to Cloud Run
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'production' }}
+    # environment: ${{ github.event.inputs.environment || 'production' }}  # Disabled - using repo secrets
 
     permissions:
       contents: read

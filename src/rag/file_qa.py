@@ -616,10 +616,11 @@ ANSWER:"""
     def _clean_pdf_text(self, text: str) -> str:
         """Clean PDF extraction artifacts like (cid:X) codes"""
         import re
+
         # Remove (cid:X) patterns - these are font encoding artifacts
-        cleaned = re.sub(r'\(cid:\d+\)', ' ', text)
+        cleaned = re.sub(r"\(cid:\d+\)", " ", text)
         # Normalize whitespace
-        cleaned = re.sub(r'\s+', ' ', cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned)
         return cleaned.strip()
 
     def summarize_document(self, text: Optional[str] = None) -> Dict:
@@ -647,7 +648,8 @@ ANSWER:"""
 
         # Try using Gemini for summarization first (more reliable)
         try:
-            summary_prompt = """Please provide a comprehensive summary of this medical document. Include:
+            summary_prompt = (
+                """Please provide a comprehensive summary of this medical document. Include:
 1. Patient information (if available)
 2. Key diagnoses and findings
 3. Important test results or measurements
@@ -655,7 +657,9 @@ ANSWER:"""
 5. Any critical alerts or abnormal values
 
 Document:
-""" + text[:15000]  # Limit text length for API
+"""
+                + text[:15000]
+            )  # Limit text length for API
 
             result = self.ask_question(summary_prompt)
             if result.get("answer") and "error" not in result.get("answer", "").lower():

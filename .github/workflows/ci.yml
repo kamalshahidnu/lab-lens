@@ -133,7 +133,7 @@ jobs:
           bandit -r src/ data_pipeline/ model_development/ model_deployment/ -f json -o bandit-report.json || true
 
       - name: Upload security report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: bandit-report.json

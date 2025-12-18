@@ -1,55 +1,58 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import PeftModel
-import torch
 import warnings
-warnings.filterwarnings('ignore')
+
+import torch
+from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+warnings.filterwarnings("ignore")
+
 
 def load_model():
-  adapter_path = "../saved_models/content/saved_model"
-  base_model = "unsloth/llama-3.2-3b-instruct"
- 
-  print("Loading base model (this may take a few minutes on first run)...")
-  try:
-    # Check for MPS availability first
-    # import torch
-    # if torch.backends.mps.is_available():
-    #   print(" Mac GPU (MPS) detected")
-    #   device_map = "mps"
-    # else:
-    #   print("⚠️ No GPU detected, using CPU (will be slow)")
-    #   device_map = "cpu"
-    # Try loading with less memory
-    model = AutoModelForCausalLM.from_pretrained(
-      base_model,
-      torch_dtype=torch.float16,
-      device_map="cpu", # Use CPU to avoid MPS issues on Mac
-      low_cpu_mem_usage=True,
-      trust_remote_code=True
-    )
-   
-    print("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(adapter_path)
-   
-    print("Applying LoRA adapter...")
-    model = PeftModel.from_pretrained(model, adapter_path)
-    tokenizer.pad_token = tokenizer.eos_token
+    adapter_path = "../saved_models/content/saved_model"
+    base_model = "unsloth/llama-3.2-3b-instruct"
 
-   
-    return model, tokenizer
-  except Exception as e:
-    print(f"Error loading model: {e}")
-    return None, None
+    print("Loading base model (this may take a few minutes on first run)...")
+    try:
+        # Check for MPS availability first
+        # import torch
+        # if torch.backends.mps.is_available():
+        #   print(" Mac GPU (MPS) detected")
+        #   device_map = "mps"
+        # else:
+        #   print("⚠️ No GPU detected, using CPU (will be slow)")
+        #   device_map = "cpu"
+        # Try loading with less memory
+        model = AutoModelForCausalLM.from_pretrained(
+            base_model,
+            torch_dtype=torch.float16,
+            device_map="cpu",  # Use CPU to avoid MPS issues on Mac
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
+        )
+
+        print("Loading tokenizer...")
+        tokenizer = AutoTokenizer.from_pretrained(adapter_path)
+
+        print("Applying LoRA adapter...")
+        model = PeftModel.from_pretrained(model, adapter_path)
+        tokenizer.pad_token = tokenizer.eos_token
+
+        return model, tokenizer
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None, None
+
 
 def simple_test():
-  """Test with a simple medical prompt"""
-  model, tokenizer = load_model()
- 
-  if model is None:
-    print("Failed to load model")
-    return
- 
-  # Simple medical text - MATCHING TRAINING FORMAT
-  discharge_text = """Discharge Medications:
+    """Test with a simple medical prompt"""
+    model, tokenizer = load_model()
+
+    if model is None:
+        print("Failed to load model")
+        return
+
+    # Simple medical text - MATCHING TRAINING FORMAT
+    discharge_text = """Discharge Medications:
 1. Insulin Regular Human 100 unit/mL Solution Sig: Per sliding
 scale units Injection ASDIR (AS DIRECTED).
 2. Chlorhexidine Gluconate 0.12 % Mouthwash Sig: One (1) ML
@@ -127,9 +130,9 @@ None
 
 
 """
- 
-  # FORMAT THE PROMPT EXACTLY LIKE TRAINING
-  instruction = """You are a medical assistant.
+
+    # FORMAT THE PROMPT EXACTLY LIKE TRAINING
+    instruction = """You are a medical assistant.
 IMPORTANT RULES:
 1. NEVER list medications
 2. Use simple words a child would understand
@@ -138,50 +141,51 @@ IMPORTANT RULES:
 
 Example: 'You had bleeding in your brain. You're getting better but need help moving. You'll go to a special hospital to continue recovering.'
 """
- 
-  prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+    prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
 {instruction}<|eot_id|><|start_header_id|>user<|end_header_id|>
 
 {discharge_text}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 
 """
- 
-  print("\nGenerating response...")
-  inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
- 
-  with torch.no_grad():
-    outputs = model.generate(
-      inputs.input_ids,
-      max_new_tokens=500,
-      temperature=0.3,
-      top_p =0.85,
-      repetition_penalty=1.5,
-      do_sample=True,
-      pad_token_id=tokenizer.eos_token_id
-    )
- 
-  response = tokenizer.decode(outputs[0][len(inputs.input_ids[0]):], skip_special_tokens=True)
 
-  def clean_medical_output(text):
-    lines = text.split('\n')
-    cleaned = []
-    for line in lines:
-      # Skip medication lines
-      if any(word in line.lower() for word in ['mg', 'tablet', 'injection', 'solution']):
-        continue
-      # Skip medical jargon lines
-      if 'Sig:' in line or 'PO' in line or 'BID' in line:
-        continue
-      cleaned.append(line)
-    return '\n'.join(cleaned).strip()
+    print("\nGenerating response...")
+    inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
 
-  response = clean_medical_output(response)
-  print("\n" + "="*50)
-  print("Generated Summary:")
-  print("="*50)
-  print(response)
+    with torch.no_grad():
+        outputs = model.generate(
+            inputs.input_ids,
+            max_new_tokens=500,
+            temperature=0.3,
+            top_p=0.85,
+            repetition_penalty=1.5,
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+
+    response = tokenizer.decode(outputs[0][len(inputs.input_ids[0]) :], skip_special_tokens=True)
+
+    def clean_medical_output(text):
+        lines = text.split("\n")
+        cleaned = []
+        for line in lines:
+            # Skip medication lines
+            if any(word in line.lower() for word in ["mg", "tablet", "injection", "solution"]):
+                continue
+            # Skip medical jargon lines
+            if "Sig:" in line or "PO" in line or "BID" in line:
+                continue
+            cleaned.append(line)
+        return "\n".join(cleaned).strip()
+
+    response = clean_medical_output(response)
+    print("\n" + "=" * 50)
+    print("Generated Summary:")
+    print("=" * 50)
+    print(response)
+
 
 if __name__ == "__main__":
-  print("Testing your fine-tuned medical summarization model...")
-  simple_test()
+    print("Testing your fine-tuned medical summarization model...")
+    simple_test()

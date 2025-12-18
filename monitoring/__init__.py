@@ -9,6 +9,3 @@ This module contains monitoring code including:
 """
 
 __version__ = "1.0.0"
-
-
-

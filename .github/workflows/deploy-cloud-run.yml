@@ -8,6 +8,7 @@ on:
       - 'model_deployment/**'
       - 'infrastructure/**'
       - 'src/**'
+      - 'scripts/**'
       - 'requirements.txt'
       - '.github/workflows/deploy-cloud-run.yml'
   workflow_dispatch:

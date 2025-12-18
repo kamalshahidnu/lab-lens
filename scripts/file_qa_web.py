@@ -643,9 +643,33 @@ def main():
                 with st.expander("📚 Sources"):
                     for i, source in enumerate(message["sources"][:3], 1):
                         score = source.get("score", 0)
-                        preview = source.get("chunk", "")[:200]
+                        raw_chunk = source.get("chunk", "")
+                        
+                        # Clean PDF artifacts (cid:X codes)
+                        import re
+                        cleaned_chunk = re.sub(r'\(cid:\d+\)', ' ', raw_chunk)
+                        cleaned_chunk = re.sub(r'\s+', ' ', cleaned_chunk).strip()
+                        
+                        # Get a meaningful preview
+                        preview = cleaned_chunk[:300] if cleaned_chunk else "[No text available]"
+                        
+                        # Extract key terms from the user's question for highlighting
+                        user_question = message.get("_question", "")
+                        
+                        # Highlight relevant terms in the source
+                        highlighted_preview = preview
+                        if user_question:
+                            # Extract important words (skip common words)
+                            stop_words = {'the', 'a', 'an', 'is', 'was', 'were', 'what', 'which', 'who', 'how', 'when', 'where', 'this', 'that', 'for', 'and', 'or', 'in', 'on', 'at', 'to', 'of', 'my', 'me', 'i'}
+                            key_words = [w for w in re.findall(r'\b\w{3,}\b', user_question.lower()) if w not in stop_words]
+                            
+                            # Highlight matching words
+                            for word in key_words[:5]:  # Limit to 5 key words
+                                pattern = re.compile(rf'\b({re.escape(word)})\b', re.IGNORECASE)
+                                highlighted_preview = pattern.sub(r'**\1**', highlighted_preview)
+                        
                         st.caption(f"Source {i} (relevance: {score:.3f})")
-                        st.text(preview + "...")
+                        st.markdown(f"> {highlighted_preview}{'...' if len(cleaned_chunk) > 300 else ''}")
 
     # File upload modal (only appears when + button is clicked)
     if st.session_state.show_file_upload:
@@ -791,8 +815,8 @@ def main():
                         answer = result.get("answer", "No answer available")
                         sources = result.get("sources", [])
 
-                    # Add assistant response to chat
-                    st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
+                    # Add assistant response to chat (include question for source highlighting)
+                    st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources, "_question": prompt})
 
                     # Save to chat history (keep existing name if chat already exists)
                     if st.session_state.current_chat_id in st.session_state.chat_history:

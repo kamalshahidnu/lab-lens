@@ -36,10 +36,17 @@ except ImportError:
         PDF_LIB = None
 
 try:
-    import pytesseract
     from PIL import Image
 
-    OCR_AVAILABLE = True
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    Image = None  # type: ignore
+
+try:
+    import pytesseract
+
+    OCR_AVAILABLE = True and PIL_AVAILABLE
 except ImportError:
     OCR_AVAILABLE = False
 
@@ -217,7 +224,7 @@ class DocumentProcessor:
 
         return result
 
-    def _analyze_with_gemini_vision(self, image: Image.Image, file_path: Path) -> Optional[str]:
+    def _analyze_with_gemini_vision(self, image: "Image.Image", file_path: Path) -> Optional[str]:
         """Analyze image using Gemini Vision API"""
         try:
             # Configure Gemini

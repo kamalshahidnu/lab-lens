@@ -99,3 +99,4 @@ echo ""
 echo "📈 View monitoring:"
 echo " https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME/metrics?project=$PROJECT_ID"
 
+

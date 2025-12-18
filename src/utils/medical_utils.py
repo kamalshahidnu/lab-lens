@@ -245,3 +245,4 @@ def get_medical_simplifier() -> MedicalTermSimplifier:
   """Get instance of medical term simplifier"""
   return MedicalTermSimplifier()
 
+

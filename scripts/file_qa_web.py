@@ -579,35 +579,35 @@ def main():
         if not st.session_state.documents_loaded:
             st.markdown(
                 """
-      <div class="welcome-container">
-        <div class="welcome-title">🏥 Lab Lens</div>
-        <div class="welcome-subtitle" style="font-size: 1.2rem; color: #10a37f; margin-bottom: 1.5rem;">Your AI-Powered Medical Report Assistant</div>
-        <div style="max-width: 600px; margin: 0 auto; text-align: left; padding: 0 1rem;">
-          <p style="color: #b4b4b4; font-size: 1rem; line-height: 1.6; margin-bottom: 1.5rem;">
-            Welcome! I help you understand complex medical lab reports by translating technical jargon into plain language.
-          </p>
-          <div style="background: rgba(16, 163, 127, 0.1); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-            <p style="color: #ececec; font-weight: 600; margin-bottom: 0.75rem;">✨ What I can do:</p>
-            <ul style="color: #b4b4b4; margin: 0; padding-left: 1.25rem; line-height: 1.8;">
-              <li><strong>Explain lab results</strong> — Understand what your blood work, metabolic panels, and other tests mean</li>
-              <li><strong>Simplify medical terms</strong> — Get plain-English explanations for complex terminology</li>
-              <li><strong>Summarize reports</strong> — Get concise summaries of lengthy medical documents</li>
-              <li><strong>Answer questions</strong> — Ask anything about your uploaded health documents</li>
-            </ul>
-          </div>
-          <div style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 1.25rem; border: 1px solid #343541;">
-            <p style="color: #ececec; font-weight: 600; margin-bottom: 0.5rem;">🚀 Getting Started:</p>
-            <ol style="color: #b4b4b4; margin: 0; padding-left: 1.25rem; line-height: 1.8;">
-              <li>Click the <strong style="color: #10a37f;">➕ button</strong> below to upload your lab report (PDF, image, or text)</li>
-              <li>Click <strong style="color: #10a37f;">📥 Load Documents</strong> to process your file</li>
-              <li>Start asking questions like <em>"What does my cholesterol level mean?"</em></li>
-            </ol>
-          </div>
-          <p style="color: #666; font-size: 0.85rem; margin-top: 1.5rem; text-align: center;">
-            🔒 Your documents are processed securely and not stored permanently
-          </p>
+      <div style="text-align: center; padding: 1rem 1rem 0.5rem;">
+        <div style="font-size: 1.8rem; font-weight: bold; margin-bottom: 0.25rem;">🏥 Lab Lens</div>
+        <div style="font-size: 1rem; color: #10a37f; margin-bottom: 0.75rem;">Your AI-Powered Medical Report Assistant</div>
+        <p style="color: #b4b4b4; font-size: 0.9rem; margin-bottom: 1rem;">
+          I help you understand complex medical lab reports by translating technical jargon into plain language.
+        </p>
+      </div>
+      <div style="display: flex; gap: 1rem; max-width: 700px; margin: 0 auto; padding: 0 1rem;">
+        <div style="flex: 1; background: rgba(16, 163, 127, 0.1); border-radius: 10px; padding: 1rem;">
+          <p style="color: #ececec; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">✨ What I can do:</p>
+          <ul style="color: #b4b4b4; margin: 0; padding-left: 1rem; font-size: 0.85rem; line-height: 1.6;">
+            <li><strong>Explain</strong> lab results</li>
+            <li><strong>Simplify</strong> medical terms</li>
+            <li><strong>Summarize</strong> reports</li>
+            <li><strong>Answer</strong> health questions</li>
+          </ul>
+        </div>
+        <div style="flex: 1; background: rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 1rem; border: 1px solid #343541;">
+          <p style="color: #ececec; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">🚀 Get Started:</p>
+          <ol style="color: #b4b4b4; margin: 0; padding-left: 1rem; font-size: 0.85rem; line-height: 1.6;">
+            <li>Click <strong style="color: #10a37f;">➕</strong> below</li>
+            <li>Upload your lab report</li>
+            <li>Ask questions!</li>
+          </ol>
         </div>
       </div>
+      <p style="color: #666; font-size: 0.75rem; text-align: center; margin-top: 0.75rem;">
+        🔒 Documents processed securely, not stored
+      </p>
       """,
                 unsafe_allow_html=True,
             )
@@ -615,19 +615,10 @@ def main():
             # Show a welcome message for loaded documents
             st.markdown(
                 """
-      <div class="welcome-container">
-        <div class="welcome-title">📄 Documents Ready!</div>
-        <div class="welcome-subtitle" style="font-size: 1.1rem; color: #10a37f; margin-bottom: 1rem;">Your files have been processed successfully</div>
-        <div style="max-width: 500px; margin: 0 auto; text-align: left;">
-          <p style="color: #b4b4b4; font-size: 1rem; margin-bottom: 1rem;">Now you can ask questions like:</p>
-          <ul style="color: #888; font-style: italic; line-height: 1.8;">
-            <li>"Summarize this lab report for me"</li>
-            <li>"What are the key findings?"</li>
-            <li>"Is my cholesterol level normal?"</li>
-            <li>"Explain what hemoglobin A1C means"</li>
-            <li>"Are there any values outside the normal range?"</li>
-          </ul>
-        </div>
+      <div style="text-align: center; padding: 1.5rem;">
+        <div style="font-size: 1.5rem; font-weight: bold;">📄 Documents Ready!</div>
+        <div style="font-size: 1rem; color: #10a37f; margin: 0.5rem 0;">Your files have been processed</div>
+        <p style="color: #888; font-size: 0.9rem;">Try: <em>"Summarize this report"</em> or <em>"What are the key findings?"</em></p>
       </div>
       """,
                 unsafe_allow_html=True,

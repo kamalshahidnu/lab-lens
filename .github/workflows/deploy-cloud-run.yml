@@ -47,23 +47,24 @@ jobs:
             echo "❌ Error: GCP_PROJECT_ID secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+          # NOTE: Do NOT expand multiline secrets in bash conditionals (can break scripts).
+          if [ "${{ secrets.GCP_SA_KEY != '' }}" != "true" ]; then
             echo "❌ Error: GCP_SA_KEY secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
+          if [ "${{ secrets.FIREBASE_API_KEY != '' }}" != "true" ]; then
             echo "❌ Error: FIREBASE_API_KEY secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
+          if [ "${{ secrets.FIREBASE_AUTH_DOMAIN != '' }}" != "true" ]; then
             echo "❌ Error: FIREBASE_AUTH_DOMAIN secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.FIREBASE_APP_ID }}" ]; then
+          if [ "${{ secrets.FIREBASE_APP_ID != '' }}" != "true" ]; then
             echo "❌ Error: FIREBASE_APP_ID secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.GCS_BUCKET_USER_UPLOADS }}" ]; then
+          if [ "${{ secrets.GCS_BUCKET_USER_UPLOADS != '' }}" != "true" ]; then
             echo "❌ Error: GCS_BUCKET_USER_UPLOADS secret is not set"
             exit 1
           fi

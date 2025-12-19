@@ -32,6 +32,7 @@ jobs:
           context: .
           file: ./infrastructure/docker/Dockerfile.cloudrun
           push: false
+          load: true
           tags: lab-lens:test
           cache-from: type=gha
           cache-to: type=gha,mode=max

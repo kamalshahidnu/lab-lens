@@ -446,48 +446,12 @@ def render_google_sign_in() -> None:
 <div style="display:flex; flex-direction:column; gap:0.75rem;">
   <div id="authStatus" style="color:#ececec; font-size:0.9rem;"></div>
   <div style="display:flex; gap:0.5rem;">
-    <button id="btnSignIn" style="padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:#343541; color:#fff; cursor:pointer;">
+    <button id="btnOpenGoogle" style="padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:#343541; color:#fff; cursor:pointer; width:100%;">
       Sign in with Google
-    </button>
-    <button id="btnSignInRedirect" style="padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:transparent; color:#fff; cursor:pointer;">
-      Sign in (redirect)
     </button>
     <button id="btnSignOut" style="padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:transparent; color:#fff; cursor:pointer; display:none;">
       Sign out
     </button>
-  </div>
-
-  <div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid #343541;">
-    <div style="font-size:0.85rem; opacity:0.9; margin-bottom:0.25rem;">Email / password</div>
-    <div style="display:flex; flex-direction:column; gap:0.4rem;">
-      <input id="emailInput" type="email" placeholder="Email" style="padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#0e1117; color:#fff;">
-      <input id="passwordInput" type="password" placeholder="Password" style="padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#0e1117; color:#fff;">
-      <div style="display:flex; gap:0.5rem;">
-        <button id="btnEmailSignIn" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#343541; color:#fff; cursor:pointer;">
-          Sign in
-        </button>
-        <button id="btnEmailSignUp" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:transparent; color:#fff; cursor:pointer;">
-          Create account
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid #343541;">
-    <div style="font-size:0.85rem; opacity:0.9; margin-bottom:0.25rem;">Phone (OTP)</div>
-    <div style="display:flex; flex-direction:column; gap:0.4rem;">
-      <input id="phoneInput" type="tel" placeholder="+1 555 555 5555" style="padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#0e1117; color:#fff;">
-      <div style="display:flex; gap:0.5rem;">
-        <button id="btnPhoneSend" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#343541; color:#fff; cursor:pointer;">
-          Send code
-        </button>
-        <input id="otpInput" type="text" inputmode="numeric" placeholder="Code" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#0e1117; color:#fff;">
-        <button id="btnPhoneVerify" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:transparent; color:#fff; cursor:pointer;">
-          Verify
-        </button>
-      </div>
-      <div id="recaptcha-container"></div>
-    </div>
   </div>
 </div>
 
@@ -515,207 +479,18 @@ def render_google_sign_in() -> None:
     }}
   }}
 
-  function setStatus(text) {{
-    const el = document.getElementById('authStatus');
-    if (el) el.textContent = text || "";
-  }}
-
-  function googleFriendlyMessage(err) {{
-    const code = (err && err.code) ? err.code : "";
-    if (code === "auth/unauthorized-domain") {{
-      return "Google sign-in isn’t available for this site yet. Please try email/password below.";
-    }}
-    if (code === "auth/operation-not-supported-in-this-environment") {{
-      return "Google sign-in isn’t supported in this browser context. Please use email/password below.";
-    }}
-    if (code === "auth/popup-blocked") {{
-      return "Popup blocked. Try “Sign in (redirect)” or use email/password below.";
-    }}
-    if (code === "auth/popup-closed-by-user") {{
-      return "Sign-in was cancelled. Try again or use email/password below.";
-    }}
-    return "Google sign-in failed. Please use email/password below.";
-  }}
-
   function cacheToken(token) {{
     try {{ localStorage.setItem("lab_lens_firebase_id_token", token); }} catch (e) {{}}
     try {{ sessionStorage.setItem("lab_lens_firebase_id_token", token); }} catch (e) {{}}
   }}
 
-  function loadCachedToken() {{
-    try {{
-      const t1 = localStorage.getItem("lab_lens_firebase_id_token");
-      if (t1) return t1;
-    }} catch (e) {{}}
-    try {{
-      const t2 = sessionStorage.getItem("lab_lens_firebase_id_token");
-      if (t2) return t2;
-    }} catch (e) {{}}
-    return "";
+  function setStatus(text) {{
+    const el = document.getElementById('authStatus');
+    if (el) el.textContent = text || "";
   }}
 
-  async function signInRedirect() {{
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const auth = firebase.auth();
-    try {{
-      setStatus("Redirecting to Google sign-in…");
-      await auth.signInWithRedirect(provider);
-    }} catch (err) {{
-      console.error(err);
-      setStatus(googleFriendlyMessage(err));
-      throw err;
-    }}
-  }}
-
-  async function signIn() {{
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const auth = firebase.auth();
-    try {{
-      const result = await auth.signInWithPopup(provider);
-      const user = result.user;
-      const token = await user.getIdToken(true);
-      cacheToken(token);
-      setStreamlitToken(token);
-    }} catch (err) {{
-      console.error(err);
-      const code = (err && err.code) ? err.code : "";
-      if (code === "auth/popup-blocked" || code === "auth/popup-closed-by-user") {{
-        setStatus("Popup blocked. Using redirect sign-in…");
-        return signInRedirect();
-      }}
-      if (code === "auth/operation-not-supported-in-this-environment") {{
-        setStatus("Google sign-in isn’t supported here. Please use email/password below.");
-        return;
-      }}
-      if (code === "auth/unauthorized-domain") {{
-        setStatus("Google sign-in isn’t available for this site yet. Please use email/password below.");
-        throw err;
-      }}
-      setStatus(googleFriendlyMessage(err));
-      throw err;
-    }}
-  }}
-
-  function getEmailAndPassword() {{
-    const email = (document.getElementById('emailInput')?.value || '').trim();
-    const password = (document.getElementById('passwordInput')?.value || '');
-    return {{ email, password }};
-  }}
-
-  function prettyAuthError(err) {{
-    const code = (err && err.code) ? err.code : "";
-    if (code === "auth/operation-not-allowed") return "Email/password auth is disabled. Enable it in Firebase Authentication → Sign-in method.";
-    if (code === "auth/user-not-found") return "No account found for this email.";
-    if (code === "auth/wrong-password") return "Wrong password.";
-    if (code === "auth/invalid-email") return "Invalid email.";
-    if (code === "auth/email-already-in-use") return "Account already exists for this email.";
-    if (code === "auth/weak-password") return "Password is too weak (Firebase requires stronger passwords).";
-    if (code === "auth/too-many-requests") return "Too many attempts. Try again later.";
-    return code || (err && err.message) || "unknown error";
-  }}
-
-  async function emailSignIn() {{
-    const auth = firebase.auth();
-    const {{ email, password }} = getEmailAndPassword();
-    if (!email || !password) {{
-      setStatus("Enter email and password.");
-      return;
-    }}
-    try {{
-      setStatus("Signing in…");
-      const result = await auth.signInWithEmailAndPassword(email, password);
-      const token = await result.user.getIdToken(true);
-      cacheToken(token);
-      setStreamlitToken(token);
-      setStatus("Signed in: " + (result.user.email || result.user.uid));
-      document.getElementById('btnSignOut').style.display = 'inline-block';
-    }} catch (err) {{
-      console.error(err);
-      setStatus("Email sign-in failed: " + prettyAuthError(err));
-    }}
-  }}
-
-  async function emailSignUp() {{
-    const auth = firebase.auth();
-    const {{ email, password }} = getEmailAndPassword();
-    if (!email || !password) {{
-      setStatus("Enter email and password.");
-      return;
-    }}
-    try {{
-      setStatus("Creating account…");
-      const result = await auth.createUserWithEmailAndPassword(email, password);
-      const token = await result.user.getIdToken(true);
-      cacheToken(token);
-      setStreamlitToken(token);
-      setStatus("Signed in: " + (result.user.email || result.user.uid));
-      document.getElementById('btnSignOut').style.display = 'inline-block';
-    }} catch (err) {{
-      console.error(err);
-      setStatus("Create account failed: " + prettyAuthError(err));
-    }}
-  }}
-
-  // Phone auth requires reCAPTCHA verifier (web-only).
-  let phoneConfirmation = null;
-  let recaptchaVerifier = null;
-
-  function ensureRecaptcha() {{
-    if (recaptchaVerifier) return recaptchaVerifier;
-    try {{
-      recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {{
-        size: 'invisible'
-      }});
-      recaptchaVerifier.render().catch(console.error);
-      return recaptchaVerifier;
-    }} catch (e) {{
-      console.error(e);
-      setStatus("Phone sign-in isn’t available in this browser context. Please use email/password.");
-      return null;
-    }}
-  }}
-
-  async function phoneSendCode() {{
-    const auth = firebase.auth();
-    const phone = (document.getElementById('phoneInput')?.value || '').trim();
-    if (!phone) {{
-      setStatus("Enter a phone number in international format (e.g. +1...).");
-      return;
-    }}
-    const verifier = ensureRecaptcha();
-    if (!verifier) return;
-    try {{
-      setStatus("Sending verification code…");
-      phoneConfirmation = await auth.signInWithPhoneNumber(phone, verifier);
-      setStatus("Code sent. Enter it and click Verify.");
-    }} catch (err) {{
-      console.error(err);
-      setStatus("Could not send code. Please use email/password.");
-    }}
-  }}
-
-  async function phoneVerifyCode() {{
-    const code = (document.getElementById('otpInput')?.value || '').trim();
-    if (!phoneConfirmation) {{
-      setStatus("Click “Send code” first.");
-      return;
-    }}
-    if (!code) {{
-      setStatus("Enter the code you received.");
-      return;
-    }}
-    try {{
-      setStatus("Verifying…");
-      const result = await phoneConfirmation.confirm(code);
-      const token = await result.user.getIdToken(true);
-      cacheToken(token);
-      setStreamlitToken(token);
-      setStatus("Signed in.");
-      document.getElementById('btnSignOut').style.display = 'inline-block';
-    }} catch (err) {{
-      console.error(err);
-      setStatus("Invalid code. Try again or use email/password.");
-    }}
+  function showSignedInUI() {{
+    document.getElementById('btnSignOut').style.display = 'inline-block';
   }}
 
   async function signOut() {{
@@ -729,56 +504,123 @@ def render_google_sign_in() -> None:
     document.getElementById('btnSignOut').style.display = 'none';
   }}
 
-  document.getElementById('btnSignIn').addEventListener('click', () => signIn().catch(err => {{
-    console.error(err);
-    setStatus(googleFriendlyMessage(err));
-  }}));
-  document.getElementById('btnSignInRedirect').addEventListener('click', () => signInRedirect().catch(err => {{
-    console.error(err);
-    setStatus(googleFriendlyMessage(err));
-  }}));
-  document.getElementById('btnEmailSignIn').addEventListener('click', () => emailSignIn());
-  document.getElementById('btnEmailSignUp').addEventListener('click', () => emailSignUp());
-  document.getElementById('btnPhoneSend').addEventListener('click', () => phoneSendCode());
-  document.getElementById('btnPhoneVerify').addEventListener('click', () => phoneVerifyCode());
-  document.getElementById('btnSignOut').addEventListener('click', () => signOut().catch(console.error));
-
-  // Handle redirect result (if the user used redirect sign-in)
-  firebase.auth().getRedirectResult().then(async (result) => {{
-    if (result && result.user) {{
-      const token = await result.user.getIdToken(true);
-      cacheToken(token);
-      setStreamlitToken(token);
-      setStatus("Signed in: " + (result.user.email || result.user.uid));
-      document.getElementById('btnSignOut').style.display = 'inline-block';
+  // Listen for token from the separate auth window
+  window.addEventListener('message', (event) => {{
+    try {{
+      const data = event.data || {{}};
+      if (data && data.type === 'LL_FIREBASE_TOKEN' && data.token) {{
+        cacheToken(data.token);
+        setStreamlitToken(data.token);
+        setStatus("Signed in");
+        showSignedInUI();
+      }}
+    }} catch (e) {{
+      console.error(e);
     }}
-  }}).catch((err) => {{
-    console.error(err);
-    setStatus(googleFriendlyMessage(err));
   }});
 
+  function openGoogleAuthWindow() {{
+    const w = window.open("", "lab_lens_auth", "width=520,height=720,noopener,noreferrer");
+    if (!w) {{
+      setStatus("Popup blocked. Please allow popups for this site and try again.");
+      return;
+    }}
+
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lab Lens Sign-in</title>
+    <style>
+      body {{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; }}
+      .card {{ max-width: 420px; margin: 0 auto; }}
+      button {{ width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #ccc; background: #111; color: #fff; cursor: pointer; font-size: 14px; }}
+      .status {{ margin-top: 12px; color: #333; font-size: 13px; }}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Sign in to Lab Lens</h2>
+      <button id="btnGo">Continue with Google</button>
+      <div id="status" class="status"></div>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script>
+      const firebaseConfig = ${json.dumps(cfg)};
+      const statusEl = document.getElementById('status');
+      function setStatus(t) {{ statusEl.textContent = t || ''; }}
+      try {{
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      }} catch (e) {{ console.error(e); }}
+
+      const auth = firebase.auth();
+      const provider = new firebase.auth.GoogleAuthProvider();
+
+      async function completeIfRedirected() {{
+        try {{
+          const result = await auth.getRedirectResult();
+          if (result && result.user) {{
+            const token = await result.user.getIdToken(true);
+            window.opener && window.opener.postMessage({{ type: 'LL_FIREBASE_TOKEN', token }}, '*');
+            setStatus('Signed in. You can close this window.');
+            setTimeout(() => window.close(), 300);
+          }}
+        }} catch (e) {{
+          console.error(e);
+          setStatus('Sign-in failed. Please try again.');
+        }}
+      }}
+
+      document.getElementById('btnGo').addEventListener('click', async () => {{
+        try {{
+          setStatus('Redirecting to Google…');
+          await auth.signInWithRedirect(provider);
+        }} catch (e) {{
+          console.error(e);
+          setStatus('Sign-in failed. Please try again.');
+        }}
+      }});
+
+      completeIfRedirected();
+    </script>
+  </body>
+</html>`;
+
+    try {{
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      setStatus("Opening Google sign-in…");
+    }} catch (e) {{
+      console.error(e);
+      setStatus("Could not open sign-in window. Please try again.");
+    }}
+  }}
+
+  // Keep session in sync
   firebase.auth().onAuthStateChanged(async (user) => {{
     if (user) {{
       try {{
         const token = await user.getIdToken(false);
         cacheToken(token);
         setStreamlitToken(token);
-        setStatus("Signed in: " + (user.email || user.uid));
-        document.getElementById('btnSignOut').style.display = 'inline-block';
+        setStatus("Signed in");
+        showSignedInUI();
       }} catch (e) {{
         console.error(e);
       }}
     }} else {{
       setStatus("Not signed in");
-      const cached = loadCachedToken();
-      if (cached) {{
-        setStreamlitToken(cached);
-      }}
     }}
   }});
+
+  document.getElementById('btnOpenGoogle').addEventListener('click', openGoogleAuthWindow);
+  document.getElementById('btnSignOut').addEventListener('click', () => signOut().catch(console.error));
 </script>
 """,
-        height=170,
+        height=120,
     )
 
 

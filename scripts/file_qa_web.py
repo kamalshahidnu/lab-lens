@@ -22,6 +22,7 @@ sys.path.insert(0, str(project_root))
 
 from src.rag.file_qa import FileQA
 from src.auth.firebase import FirebaseUser, verify_firebase_id_token
+from src.auth.firebase_identity import FirebaseIdentityError, sign_in_with_email_password, sign_up_with_email_password
 from src.storage.firestore_store import FirestoreStore
 from src.storage.gcs_store import GCSStore
 from src.privacy.redaction import redact_sources, redact_text, sanitize_filename
@@ -804,6 +805,35 @@ def main():
             render_google_sign_in()
             if st.session_state.get("auth_error"):
                 st.error(f"Authentication error: {st.session_state['auth_error']}")
+
+            # Email/password fallback (works even when Google popup/redirect is blocked in iframe)
+            with st.expander("Use email/password instead", expanded=False):
+                with st.form("email_auth_form", clear_on_submit=False):
+                    email = st.text_input("Email", key="email_auth_email")
+                    password = st.text_input("Password", type="password", key="email_auth_password")
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        do_sign_in = st.form_submit_button("Sign in", use_container_width=True)
+                    with col_b:
+                        do_sign_up = st.form_submit_button("Create account", use_container_width=True)
+
+                if do_sign_in or do_sign_up:
+                    try:
+                        if not email or not password:
+                            raise ValueError("Email and password are required.")
+                        if do_sign_up:
+                            res = sign_up_with_email_password(email.strip(), password)
+                        else:
+                            res = sign_in_with_email_password(email.strip(), password)
+                        # Set token for firebase-admin verification path
+                        st.session_state.firebase_id_token = res.id_token
+                        st.session_state.auth_error = None
+                        st.rerun()
+                    except FirebaseIdentityError as e:
+                        st.error(f"Email sign-in failed: {e}")
+                    except Exception as e:
+                        st.error(f"Email sign-in failed: {e}")
+
             st.caption("You can also continue anonymously (your chat resets on refresh).")
             if st.button("Continue anonymously", use_container_width=True, key="continue_anon"):
                 st.session_state.anonymous_mode = True

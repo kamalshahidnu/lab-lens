@@ -51,6 +51,22 @@ jobs:
             echo "❌ Error: GCP_SA_KEY secret is not set"
             exit 1
           fi
+          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
+            echo "❌ Error: FIREBASE_API_KEY secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
+            echo "❌ Error: FIREBASE_AUTH_DOMAIN secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_APP_ID }}" ]; then
+            echo "❌ Error: FIREBASE_APP_ID secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.GCS_BUCKET_USER_UPLOADS }}" ]; then
+            echo "❌ Error: GCS_BUCKET_USER_UPLOADS secret is not set"
+            exit 1
+          fi
           echo "✅ Secrets verified"
 
       - name: Authenticate to Google Cloud
@@ -104,7 +120,7 @@ jobs:
             --timeout 600 \
             --max-instances 10 \
             --min-instances 0 \
-            --set-env-vars HF_HOME=/root/.cache/huggingface,TRANSFORMERS_CACHE=/root/.cache/huggingface \
+            --set-env-vars HF_HOME=/root/.cache/huggingface,TRANSFORMERS_CACHE=/root/.cache/huggingface,FIRESTORE_PROJECT_ID=$PROJECT_ID,FIREBASE_PROJECT_ID=$PROJECT_ID,FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }},FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }},FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }},GCS_BUCKET_USER_UPLOADS=${{ secrets.GCS_BUCKET_USER_UPLOADS }} \
             --set-secrets GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_API_KEY=gemini-api-key:latest \
             --project $PROJECT_ID
 

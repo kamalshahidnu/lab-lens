@@ -383,8 +383,14 @@ def get_firestore_store() -> FirestoreStore:
 
 
 @st.cache_resource
-def get_gcs_store() -> GCSStore:
-    return GCSStore()
+def get_gcs_store() -> Optional[GCSStore]:
+    """
+    Returns a GCS store if configured; otherwise None (local dev without persistence).
+    """
+    try:
+        return GCSStore()
+    except Exception:
+        return None
 
 
 def firebase_web_config() -> Dict[str, str]:
@@ -901,17 +907,19 @@ def main():
                                     file_path = save_uploaded_file(uploaded_file)
                                     file_paths.append(file_path)
                                     # Persist original upload to GCS (best-effort)
-                                    try:
-                                        obj = get_gcs_store().upload_bytes(
-                                            uid=uid,
-                                            chat_id=current_chat_id,
-                                            filename=uploaded_file.name,
-                                            data=uploaded_file.getvalue(),
-                                            content_type=getattr(uploaded_file, "type", None),
-                                        )
-                                        uploaded_uris.append(obj.gs_uri)
-                                    except Exception as e:
-                                        logger.warning(f"GCS upload failed for {uploaded_file.name}: {e}")
+                                    gcs = get_gcs_store()
+                                    if gcs:
+                                        try:
+                                            obj = gcs.upload_bytes(
+                                                uid=uid,
+                                                chat_id=current_chat_id,
+                                                filename=uploaded_file.name,
+                                                data=uploaded_file.getvalue(),
+                                                content_type=getattr(uploaded_file, "type", None),
+                                            )
+                                            uploaded_uris.append(obj.gs_uri)
+                                        except Exception as e:
+                                            logger.warning(f"GCS upload failed for {uploaded_file.name}: {e}")
 
                                 result = st.session_state.qa_system.load_multiple_files(file_paths)
                                 if result.get("success"):

@@ -508,8 +508,15 @@ def render_google_sign_in() -> None:
   async function signInRedirect() {{
     const provider = new firebase.auth.GoogleAuthProvider();
     const auth = firebase.auth();
-    setStatus("Redirecting to Google sign-in…");
-    await auth.signInWithRedirect(provider);
+    try {{
+      setStatus("Redirecting to Google sign-in…");
+      await auth.signInWithRedirect(provider);
+    }} catch (err) {{
+      console.error(err);
+      const code = (err && err.code) ? err.code : "";
+      setStatus("Redirect sign-in failed: " + (code || (err && err.message) || "unknown"));
+      throw err;
+    }}
   }}
 
   async function signIn() {{
@@ -550,6 +557,8 @@ def render_google_sign_in() -> None:
 
   document.getElementById('btnSignIn').addEventListener('click', () => signIn().catch(err => {{
     console.error(err);
+    const code = (err && err.code) ? err.code : "";
+    setStatus("Sign-in failed: " + (code || (err && err.message) || "unknown"));
   }}));
   document.getElementById('btnSignInRedirect').addEventListener('click', () => signInRedirect().catch(err => {{
     console.error(err);
@@ -719,20 +728,17 @@ def create_new_chat(uid: Optional[str], store: Optional[FirestoreStore]):
     Create a new chat.
 
     - Signed-in: persist chat metadata to Firestore.
-    - Anonymous: keep everything in session_state only (cleared on refresh).
+    - Not signed-in: store chat state in session only (cleared when session ends).
     """
     chat_id = str(uuid4())
     if uid and store:
         store.create_chat(uid, chat_id, title="New chat")
     else:
-        if "local_chats" not in st.session_state:
-            st.session_state.local_chats = []
         st.session_state.local_chats.insert(0, {"chat_id": chat_id, "title": "New chat", "updated_at": datetime.utcnow().isoformat()})
-        st.session_state.local_messages_by_chat = st.session_state.get("local_messages_by_chat", {})
-        st.session_state.local_docs_by_chat = st.session_state.get("local_docs_by_chat", {})
-        st.session_state.local_files_by_chat = st.session_state.get("local_files_by_chat", {})
-        st.session_state.local_docs_loaded_by_chat = st.session_state.get("local_docs_loaded_by_chat", {})
-
+        st.session_state.local_messages_by_chat.setdefault(chat_id, [])
+        st.session_state.local_docs_by_chat.pop(chat_id, None)
+        st.session_state.local_files_by_chat[chat_id] = []
+        st.session_state.local_docs_loaded_by_chat[chat_id] = False
     st.session_state.current_chat_id = chat_id
     st.session_state.qa_chat_id = chat_id
     st.session_state.messages = []
@@ -776,9 +782,7 @@ def main():
         st.session_state.allow_external_calls = True
     if "pii_extra_terms" not in st.session_state:
         st.session_state.pii_extra_terms = []
-    if "anonymous_mode" not in st.session_state:
-        # Default: allow using the app without signing in (no persistence).
-        st.session_state.anonymous_mode = True
+    # Anonymous session storage (in-memory only)
     if "local_chats" not in st.session_state:
         st.session_state.local_chats = []
     if "local_messages_by_chat" not in st.session_state:
@@ -792,87 +796,10 @@ def main():
 
     fb_user = ensure_user()
     store = get_firestore_store() if fb_user else None
-    if fb_user:
-        st.session_state.anonymous_mode = False
 
     # --- Sidebar: auth gate ---
     with st.sidebar:
         st.markdown("# 🏥 Lab Lens")
-        st.markdown("---")
-
-        if not fb_user:
-            st.markdown("### 🔐 Sign in (optional)")
-            render_google_sign_in()
-            if st.session_state.get("auth_error"):
-                st.error(f"Authentication error: {st.session_state['auth_error']}")
-
-            # Email/password fallback (works even when Google popup/redirect is blocked in iframe)
-            with st.expander("Use email/password instead", expanded=False):
-                with st.form("email_auth_form", clear_on_submit=False):
-                    email = st.text_input("Email", key="email_auth_email")
-                    password = st.text_input("Password", type="password", key="email_auth_password")
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        do_sign_in = st.form_submit_button("Sign in", use_container_width=True)
-                    with col_b:
-                        do_sign_up = st.form_submit_button("Create account", use_container_width=True)
-
-                if do_sign_in or do_sign_up:
-                    try:
-                        if not email or not password:
-                            raise ValueError("Email and password are required.")
-                        if do_sign_up:
-                            res = sign_up_with_email_password(email.strip(), password)
-                        else:
-                            res = sign_in_with_email_password(email.strip(), password)
-                        # Set token for firebase-admin verification path
-                        st.session_state.firebase_id_token = res.id_token
-                        st.session_state.auth_error = None
-                        st.rerun()
-                    except FirebaseIdentityError as e:
-                        st.error(f"Email sign-in failed: {e}")
-                    except Exception as e:
-                        st.error(f"Email sign-in failed: {e}")
-
-            st.caption("You can also continue anonymously (your chat resets on refresh).")
-            if st.button("Continue anonymously", use_container_width=True, key="continue_anon"):
-                st.session_state.anonymous_mode = True
-                if not st.session_state.get("current_chat_id"):
-                    create_new_chat(None, None)
-                st.rerun()
-            st.markdown("---")
-
-        # User header
-        if fb_user:
-            st.caption(f"Signed in as: **{fb_user.email or fb_user.uid}**")
-        else:
-            st.caption("Using: **Anonymous session (not saved)**")
-        st.markdown("---")
-        st.markdown("### 🔒 Privacy")
-        st.session_state.privacy_mode = st.toggle(
-            "Redact personal identifiers before storing / sending to Gemini",
-            value=bool(st.session_state.get("privacy_mode", True)),
-        )
-        can_local_only = os.getenv("K_SERVICE") is None
-        # local_only=True -> allow_external_calls=False
-        local_only = st.toggle(
-            "Local-only mode (disable external AI calls)",
-            value=not bool(st.session_state.get("allow_external_calls", True)),
-            disabled=not can_local_only,
-            help="Only available when running locally (not on Cloud Run).",
-        )
-        st.session_state.allow_external_calls = not bool(local_only)
-        if not can_local_only:
-            # Safety: never disable external calls in Cloud Run via a sticky session value.
-            st.session_state.allow_external_calls = True
-        pii_terms = st.text_input(
-            "Extra terms to redact (comma-separated)",
-            value=",".join(st.session_state.get("pii_extra_terms", [])),
-            help="Optional: add names/clinics/IDs you want always redacted.",
-        )
-        st.session_state.pii_extra_terms = [t.strip() for t in pii_terms.split(",") if t.strip()]
-        if bool(local_only):
-            st.info("Local-only mode: no calls to Gemini/Vision APIs will be made.")
         st.markdown("---")
 
     # --- Load chats + current chat selection ---
@@ -881,7 +808,7 @@ def main():
         chats = store.list_chats(uid)
         chat_ids = {c["chat_id"] for c in chats}
     else:
-        chats = st.session_state.get("local_chats", [])
+        chats = st.session_state.local_chats
         chat_ids = {c.get("chat_id") for c in chats if c.get("chat_id")}
 
     if not st.session_state.current_chat_id or st.session_state.current_chat_id not in chat_ids:
@@ -931,14 +858,18 @@ def main():
                 st.session_state.documents_loaded = False
                 st.session_state.loaded_files = []
         else:
-            # Anonymous/local session: restore in-memory state for this chat
+            # Anonymous session: restore in-memory chat/docs for this chat_id
             st.session_state.messages = st.session_state.local_messages_by_chat.get(current_chat_id, [])
             st.session_state.documents_loaded = bool(st.session_state.local_docs_loaded_by_chat.get(current_chat_id, False))
             st.session_state.loaded_files = st.session_state.local_files_by_chat.get(current_chat_id, [])
             payload = st.session_state.local_docs_by_chat.get(current_chat_id)
             try:
                 if payload and payload.get("chunks") and payload.get("embeddings"):
-                    st.session_state.qa_system.rag.load_cached_index(payload["chunks"], payload["embeddings"], payload.get("metadata", []))
+                    st.session_state.qa_system.rag.load_cached_index(
+                        payload["chunks"],
+                        payload["embeddings"],
+                        payload.get("metadata", []),
+                    )
             except Exception as e:
                 logger.warning(f"Failed to restore local document context: {e}")
 
@@ -966,13 +897,45 @@ def main():
                 st.rerun()
 
         st.markdown("---")
-        st.markdown("### 👤 User")
         if fb_user:
+            st.markdown("### 👤 User")
             st.markdown(f"**{fb_user.name or fb_user.email or fb_user.uid}**")
             if fb_user.email:
                 st.caption(fb_user.email)
-        else:
-            st.caption("Anonymous session (not saved). Refreshing the page will clear this chat.")
+
+        # Sign-in options at bottom (no persistence unless user signs in)
+        if not fb_user:
+            st.markdown("---")
+            st.markdown("### 🔐 Sign in")
+            render_google_sign_in()
+            if st.session_state.get("auth_error"):
+                st.error(f"Authentication error: {st.session_state['auth_error']}")
+
+            with st.expander("Use email/password instead", expanded=False):
+                with st.form("email_auth_form", clear_on_submit=False):
+                    email = st.text_input("Email", key="email_auth_email")
+                    password = st.text_input("Password", type="password", key="email_auth_password")
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        do_sign_in = st.form_submit_button("Sign in", use_container_width=True)
+                    with col_b:
+                        do_sign_up = st.form_submit_button("Create account", use_container_width=True)
+
+                if do_sign_in or do_sign_up:
+                    try:
+                        if not email or not password:
+                            raise ValueError("Email and password are required.")
+                        if do_sign_up:
+                            res = sign_up_with_email_password(email.strip(), password)
+                        else:
+                            res = sign_in_with_email_password(email.strip(), password)
+                        st.session_state.firebase_id_token = res.id_token
+                        st.session_state.auth_error = None
+                        st.rerun()
+                    except FirebaseIdentityError as e:
+                        st.error(f"Email sign-in failed: {e}")
+                    except Exception as e:
+                        st.error(f"Email sign-in failed: {e}")
 
     # Show persistent status indicator if documents are loaded (at top)
     if st.session_state.documents_loaded:
@@ -1018,9 +981,6 @@ def main():
           </ol>
         </div>
       </div>
-      <p style="color: #666; font-size: 0.75rem; text-align: center; margin-top: 0.75rem;">
-        🔒 Privacy mode: identifiers redacted; raw uploads not stored by default
-      </p>
       """,
                 unsafe_allow_html=True,
             )

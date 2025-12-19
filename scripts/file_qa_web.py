@@ -22,7 +22,6 @@ sys.path.insert(0, str(project_root))
 
 from src.rag.file_qa import FileQA
 from src.auth.firebase import FirebaseUser, verify_firebase_id_token
-from src.auth.firebase_identity import FirebaseIdentityError, sign_in_with_email_password, sign_up_with_email_password
 from src.storage.firestore_store import FirestoreStore
 from src.storage.gcs_store import GCSStore
 from src.privacy.redaction import redact_sources, redact_text, sanitize_filename
@@ -457,6 +456,22 @@ def render_google_sign_in() -> None:
       Sign out
     </button>
   </div>
+
+  <div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid #343541;">
+    <div style="font-size:0.85rem; opacity:0.9; margin-bottom:0.25rem;">Email / password</div>
+    <div style="display:flex; flex-direction:column; gap:0.4rem;">
+      <input id="emailInput" type="email" placeholder="Email" style="padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#0e1117; color:#fff;">
+      <input id="passwordInput" type="password" placeholder="Password" style="padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#0e1117; color:#fff;">
+      <div style="display:flex; gap:0.5rem;">
+        <button id="btnEmailSignIn" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#343541; color:#fff; cursor:pointer;">
+          Sign in
+        </button>
+        <button id="btnEmailSignUp" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:transparent; color:#fff; cursor:pointer;">
+          Create account
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -488,6 +503,23 @@ def render_google_sign_in() -> None:
     if (el) el.textContent = text || "";
   }}
 
+  function googleFriendlyMessage(err) {{
+    const code = (err && err.code) ? err.code : "";
+    if (code === "auth/unauthorized-domain") {{
+      return "Google sign-in isn’t available for this site yet. Please try email/password below.";
+    }}
+    if (code === "auth/operation-not-supported-in-this-environment") {{
+      return "Google sign-in isn’t supported in this browser context. Please use email/password below.";
+    }}
+    if (code === "auth/popup-blocked") {{
+      return "Popup blocked. Try “Sign in (redirect)” or use email/password below.";
+    }}
+    if (code === "auth/popup-closed-by-user") {{
+      return "Sign-in was cancelled. Try again or use email/password below.";
+    }}
+    return "Google sign-in failed. Please use email/password below.";
+  }}
+
   function cacheToken(token) {{
     try {{ localStorage.setItem("lab_lens_firebase_id_token", token); }} catch (e) {{}}
     try {{ sessionStorage.setItem("lab_lens_firebase_id_token", token); }} catch (e) {{}}
@@ -513,8 +545,7 @@ def render_google_sign_in() -> None:
       await auth.signInWithRedirect(provider);
     }} catch (err) {{
       console.error(err);
-      const code = (err && err.code) ? err.code : "";
-      setStatus("Redirect sign-in failed: " + (code || (err && err.message) || "unknown"));
+      setStatus(googleFriendlyMessage(err));
       throw err;
     }}
   }}
@@ -531,16 +562,80 @@ def render_google_sign_in() -> None:
     }} catch (err) {{
       console.error(err);
       const code = (err && err.code) ? err.code : "";
-      if (code === "auth/popup-blocked" || code === "auth/popup-closed-by-user" || code === "auth/operation-not-supported-in-this-environment") {{
+      if (code === "auth/popup-blocked" || code === "auth/popup-closed-by-user") {{
         setStatus("Popup blocked. Using redirect sign-in…");
         return signInRedirect();
       }}
+      if (code === "auth/operation-not-supported-in-this-environment") {{
+        setStatus("Google sign-in isn’t supported here. Please use email/password below.");
+        return;
+      }}
       if (code === "auth/unauthorized-domain") {{
-        setStatus("Sign-in blocked: unauthorized domain. Add this Cloud Run domain in Firebase Auth → Settings → Authorized domains.");
+        setStatus("Google sign-in isn’t available for this site yet. Please use email/password below.");
         throw err;
       }}
-      setStatus("Sign-in failed: " + (code || (err && err.message) || "unknown error"));
+      setStatus(googleFriendlyMessage(err));
       throw err;
+    }}
+  }}
+
+  function getEmailAndPassword() {{
+    const email = (document.getElementById('emailInput')?.value || '').trim();
+    const password = (document.getElementById('passwordInput')?.value || '');
+    return {{ email, password }};
+  }}
+
+  function prettyAuthError(err) {{
+    const code = (err && err.code) ? err.code : "";
+    if (code === "auth/operation-not-allowed") return "Email/password auth is disabled. Enable it in Firebase Authentication → Sign-in method.";
+    if (code === "auth/user-not-found") return "No account found for this email.";
+    if (code === "auth/wrong-password") return "Wrong password.";
+    if (code === "auth/invalid-email") return "Invalid email.";
+    if (code === "auth/email-already-in-use") return "Account already exists for this email.";
+    if (code === "auth/weak-password") return "Password is too weak (Firebase requires stronger passwords).";
+    if (code === "auth/too-many-requests") return "Too many attempts. Try again later.";
+    return code || (err && err.message) || "unknown error";
+  }}
+
+  async function emailSignIn() {{
+    const auth = firebase.auth();
+    const {{ email, password }} = getEmailAndPassword();
+    if (!email || !password) {{
+      setStatus("Enter email and password.");
+      return;
+    }}
+    try {{
+      setStatus("Signing in…");
+      const result = await auth.signInWithEmailAndPassword(email, password);
+      const token = await result.user.getIdToken(true);
+      cacheToken(token);
+      setStreamlitToken(token);
+      setStatus("Signed in: " + (result.user.email || result.user.uid));
+      document.getElementById('btnSignOut').style.display = 'inline-block';
+    }} catch (err) {{
+      console.error(err);
+      setStatus("Email sign-in failed: " + prettyAuthError(err));
+    }}
+  }}
+
+  async function emailSignUp() {{
+    const auth = firebase.auth();
+    const {{ email, password }} = getEmailAndPassword();
+    if (!email || !password) {{
+      setStatus("Enter email and password.");
+      return;
+    }}
+    try {{
+      setStatus("Creating account…");
+      const result = await auth.createUserWithEmailAndPassword(email, password);
+      const token = await result.user.getIdToken(true);
+      cacheToken(token);
+      setStreamlitToken(token);
+      setStatus("Signed in: " + (result.user.email || result.user.uid));
+      document.getElementById('btnSignOut').style.display = 'inline-block';
+    }} catch (err) {{
+      console.error(err);
+      setStatus("Create account failed: " + prettyAuthError(err));
     }}
   }}
 
@@ -557,13 +652,14 @@ def render_google_sign_in() -> None:
 
   document.getElementById('btnSignIn').addEventListener('click', () => signIn().catch(err => {{
     console.error(err);
-    const code = (err && err.code) ? err.code : "";
-    setStatus("Sign-in failed: " + (code || (err && err.message) || "unknown"));
+    setStatus(googleFriendlyMessage(err));
   }}));
   document.getElementById('btnSignInRedirect').addEventListener('click', () => signInRedirect().catch(err => {{
     console.error(err);
-    setStatus("Redirect sign-in failed: " + ((err && err.code) || "unknown"));
+    setStatus(googleFriendlyMessage(err));
   }}));
+  document.getElementById('btnEmailSignIn').addEventListener('click', () => emailSignIn());
+  document.getElementById('btnEmailSignUp').addEventListener('click', () => emailSignUp());
   document.getElementById('btnSignOut').addEventListener('click', () => signOut().catch(console.error));
 
   // Handle redirect result (if the user used redirect sign-in)
@@ -577,8 +673,7 @@ def render_google_sign_in() -> None:
     }}
   }}).catch((err) => {{
     console.error(err);
-    const code = (err && err.code) ? err.code : "";
-    if (code) setStatus("Redirect sign-in error: " + code);
+    setStatus(googleFriendlyMessage(err));
   }});
 
   firebase.auth().onAuthStateChanged(async (user) => {{
@@ -910,32 +1005,6 @@ def main():
             render_google_sign_in()
             if st.session_state.get("auth_error"):
                 st.error(f"Authentication error: {st.session_state['auth_error']}")
-
-            with st.expander("Use email/password instead", expanded=False):
-                with st.form("email_auth_form", clear_on_submit=False):
-                    email = st.text_input("Email", key="email_auth_email")
-                    password = st.text_input("Password", type="password", key="email_auth_password")
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        do_sign_in = st.form_submit_button("Sign in", use_container_width=True)
-                    with col_b:
-                        do_sign_up = st.form_submit_button("Create account", use_container_width=True)
-
-                if do_sign_in or do_sign_up:
-                    try:
-                        if not email or not password:
-                            raise ValueError("Email and password are required.")
-                        if do_sign_up:
-                            res = sign_up_with_email_password(email.strip(), password)
-                        else:
-                            res = sign_in_with_email_password(email.strip(), password)
-                        st.session_state.firebase_id_token = res.id_token
-                        st.session_state.auth_error = None
-                        st.rerun()
-                    except FirebaseIdentityError as e:
-                        st.error(f"Email sign-in failed: {e}")
-                    except Exception as e:
-                        st.error(f"Email sign-in failed: {e}")
 
     # Show persistent status indicator if documents are loaded (at top)
     if st.session_state.documents_loaded:

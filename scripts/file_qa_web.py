@@ -449,6 +449,9 @@ def render_google_sign_in() -> None:
     <button id="btnSignIn" style="padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:#343541; color:#fff; cursor:pointer;">
       Sign in with Google
     </button>
+    <button id="btnSignInRedirect" style="padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:transparent; color:#fff; cursor:pointer;">
+      Sign in (redirect)
+    </button>
     <button id="btnSignOut" style="padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:transparent; color:#fff; cursor:pointer; display:none;">
       Sign out
     </button>
@@ -484,21 +487,61 @@ def render_google_sign_in() -> None:
     if (el) el.textContent = text || "";
   }}
 
+  function cacheToken(token) {{
+    try {{ localStorage.setItem("lab_lens_firebase_id_token", token); }} catch (e) {{}}
+    try {{ sessionStorage.setItem("lab_lens_firebase_id_token", token); }} catch (e) {{}}
+  }}
+
+  function loadCachedToken() {{
+    try {{
+      const t1 = localStorage.getItem("lab_lens_firebase_id_token");
+      if (t1) return t1;
+    }} catch (e) {{}}
+    try {{
+      const t2 = sessionStorage.getItem("lab_lens_firebase_id_token");
+      if (t2) return t2;
+    }} catch (e) {{}}
+    return "";
+  }}
+
+  async function signInRedirect() {{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const auth = firebase.auth();
+    setStatus("Redirecting to Google sign-in…");
+    await auth.signInWithRedirect(provider);
+  }}
+
   async function signIn() {{
     const provider = new firebase.auth.GoogleAuthProvider();
     const auth = firebase.auth();
-    const result = await auth.signInWithPopup(provider);
-    const user = result.user;
-    const token = await user.getIdToken(true);
-    localStorage.setItem("lab_lens_firebase_id_token", token);
-    setStreamlitToken(token);
+    try {{
+      const result = await auth.signInWithPopup(provider);
+      const user = result.user;
+      const token = await user.getIdToken(true);
+      cacheToken(token);
+      setStreamlitToken(token);
+    }} catch (err) {{
+      console.error(err);
+      const code = (err && err.code) ? err.code : "";
+      if (code === "auth/popup-blocked" || code === "auth/popup-closed-by-user" || code === "auth/operation-not-supported-in-this-environment") {{
+        setStatus("Popup blocked. Using redirect sign-in…");
+        return signInRedirect();
+      }}
+      if (code === "auth/unauthorized-domain") {{
+        setStatus("Sign-in blocked: unauthorized domain. Add this Cloud Run domain in Firebase Auth → Settings → Authorized domains.");
+        throw err;
+      }}
+      setStatus("Sign-in failed: " + (code || (err && err.message) || "unknown error"));
+      throw err;
+    }}
   }}
 
   async function signOut() {{
     try {{
       await firebase.auth().signOut();
     }} catch (e) {{}}
-    localStorage.removeItem("lab_lens_firebase_id_token");
+    try {{ localStorage.removeItem("lab_lens_firebase_id_token"); }} catch (e) {{}}
+    try {{ sessionStorage.removeItem("lab_lens_firebase_id_token"); }} catch (e) {{}}
     setStreamlitToken("");
     setStatus("Signed out");
     document.getElementById('btnSignOut').style.display = 'none';
@@ -506,15 +549,33 @@ def render_google_sign_in() -> None:
 
   document.getElementById('btnSignIn').addEventListener('click', () => signIn().catch(err => {{
     console.error(err);
-    setStatus("Sign-in failed. Check popup blocker.");
+  }}));
+  document.getElementById('btnSignInRedirect').addEventListener('click', () => signInRedirect().catch(err => {{
+    console.error(err);
+    setStatus("Redirect sign-in failed: " + ((err && err.code) || "unknown"));
   }}));
   document.getElementById('btnSignOut').addEventListener('click', () => signOut().catch(console.error));
+
+  // Handle redirect result (if the user used redirect sign-in)
+  firebase.auth().getRedirectResult().then(async (result) => {{
+    if (result && result.user) {{
+      const token = await result.user.getIdToken(true);
+      cacheToken(token);
+      setStreamlitToken(token);
+      setStatus("Signed in: " + (result.user.email || result.user.uid));
+      document.getElementById('btnSignOut').style.display = 'inline-block';
+    }}
+  }}).catch((err) => {{
+    console.error(err);
+    const code = (err && err.code) ? err.code : "";
+    if (code) setStatus("Redirect sign-in error: " + code);
+  }});
 
   firebase.auth().onAuthStateChanged(async (user) => {{
     if (user) {{
       try {{
         const token = await user.getIdToken(false);
-        localStorage.setItem("lab_lens_firebase_id_token", token);
+        cacheToken(token);
         setStreamlitToken(token);
         setStatus("Signed in: " + (user.email || user.uid));
         document.getElementById('btnSignOut').style.display = 'inline-block';
@@ -523,7 +584,7 @@ def render_google_sign_in() -> None:
       }}
     }} else {{
       setStatus("Not signed in");
-      const cached = localStorage.getItem("lab_lens_firebase_id_token");
+      const cached = loadCachedToken();
       if (cached) {{
         setStreamlitToken(cached);
       }}
@@ -531,7 +592,7 @@ def render_google_sign_in() -> None:
   }});
 </script>
 """,
-        height=140,
+        height=170,
     )
 
 
@@ -652,10 +713,25 @@ def save_uploaded_file(uploaded_file) -> str:
         return tmp_file.name
 
 
-def create_new_chat(uid: str, store: FirestoreStore):
-    """Create a new persisted chat session for this user."""
+def create_new_chat(uid: Optional[str], store: Optional[FirestoreStore]):
+    """
+    Create a new chat.
+
+    - Signed-in: persist chat metadata to Firestore.
+    - Anonymous: keep everything in session_state only (cleared on refresh).
+    """
     chat_id = str(uuid4())
-    store.create_chat(uid, chat_id, title="New chat")
+    if uid and store:
+        store.create_chat(uid, chat_id, title="New chat")
+    else:
+        if "local_chats" not in st.session_state:
+            st.session_state.local_chats = []
+        st.session_state.local_chats.insert(0, {"chat_id": chat_id, "title": "New chat", "updated_at": datetime.utcnow().isoformat()})
+        st.session_state.local_messages_by_chat = st.session_state.get("local_messages_by_chat", {})
+        st.session_state.local_docs_by_chat = st.session_state.get("local_docs_by_chat", {})
+        st.session_state.local_files_by_chat = st.session_state.get("local_files_by_chat", {})
+        st.session_state.local_docs_loaded_by_chat = st.session_state.get("local_docs_loaded_by_chat", {})
+
     st.session_state.current_chat_id = chat_id
     st.session_state.qa_chat_id = chat_id
     st.session_state.messages = []
@@ -699,9 +775,24 @@ def main():
         st.session_state.allow_external_calls = True
     if "pii_extra_terms" not in st.session_state:
         st.session_state.pii_extra_terms = []
+    if "anonymous_mode" not in st.session_state:
+        # Default: allow using the app without signing in (no persistence).
+        st.session_state.anonymous_mode = True
+    if "local_chats" not in st.session_state:
+        st.session_state.local_chats = []
+    if "local_messages_by_chat" not in st.session_state:
+        st.session_state.local_messages_by_chat = {}
+    if "local_docs_by_chat" not in st.session_state:
+        st.session_state.local_docs_by_chat = {}
+    if "local_files_by_chat" not in st.session_state:
+        st.session_state.local_files_by_chat = {}
+    if "local_docs_loaded_by_chat" not in st.session_state:
+        st.session_state.local_docs_loaded_by_chat = {}
 
     fb_user = ensure_user()
     store = get_firestore_store() if fb_user else None
+    if fb_user:
+        st.session_state.anonymous_mode = False
 
     # --- Sidebar: auth gate ---
     with st.sidebar:
@@ -709,16 +800,23 @@ def main():
         st.markdown("---")
 
         if not fb_user:
-            st.markdown("### 🔐 Sign in")
+            st.markdown("### 🔐 Sign in (optional)")
             render_google_sign_in()
             if st.session_state.get("auth_error"):
                 st.error(f"Authentication error: {st.session_state['auth_error']}")
+            st.caption("You can also continue anonymously (your chat resets on refresh).")
+            if st.button("Continue anonymously", use_container_width=True, key="continue_anon"):
+                st.session_state.anonymous_mode = True
+                if not st.session_state.get("current_chat_id"):
+                    create_new_chat(None, None)
+                st.rerun()
             st.markdown("---")
-            st.info("Sign in with Google to access your saved chats.")
-            st.stop()
 
-        # Signed-in user
-        st.caption(f"Signed in as: **{fb_user.email or fb_user.uid}**")
+        # User header
+        if fb_user:
+            st.caption(f"Signed in as: **{fb_user.email or fb_user.uid}**")
+        else:
+            st.caption("Using: **Anonymous session (not saved)**")
         st.markdown("---")
         st.markdown("### 🔒 Privacy")
         st.session_state.privacy_mode = st.toggle(
@@ -726,12 +824,14 @@ def main():
             value=bool(st.session_state.get("privacy_mode", True)),
         )
         can_local_only = os.getenv("K_SERVICE") is None
-        st.session_state.allow_external_calls = st.toggle(
+        # local_only=True -> allow_external_calls=False
+        local_only = st.toggle(
             "Local-only mode (disable external AI calls)",
-            value=bool(st.session_state.get("allow_external_calls", True)),
+            value=not bool(st.session_state.get("allow_external_calls", True)),
             disabled=not can_local_only,
             help="Only available when running locally (not on Cloud Run).",
         )
+        st.session_state.allow_external_calls = not bool(local_only)
         if not can_local_only:
             # Safety: never disable external calls in Cloud Run via a sticky session value.
             st.session_state.allow_external_calls = True
@@ -741,16 +841,18 @@ def main():
             help="Optional: add names/clinics/IDs you want always redacted.",
         )
         st.session_state.pii_extra_terms = [t.strip() for t in pii_terms.split(",") if t.strip()]
-        if st.session_state.allow_external_calls is False:
+        if bool(local_only):
             st.info("Local-only mode: no calls to Gemini/Vision APIs will be made.")
         st.markdown("---")
 
     # --- Load chats + current chat selection ---
-    assert fb_user is not None and store is not None
-    uid = fb_user.uid
-
-    chats = store.list_chats(uid)
-    chat_ids = {c["chat_id"] for c in chats}
+    uid: Optional[str] = fb_user.uid if fb_user else None
+    if uid and store:
+        chats = store.list_chats(uid)
+        chat_ids = {c["chat_id"] for c in chats}
+    else:
+        chats = st.session_state.get("local_chats", [])
+        chat_ids = {c.get("chat_id") for c in chats if c.get("chat_id")}
 
     if not st.session_state.current_chat_id or st.session_state.current_chat_id not in chat_ids:
         if chats:
@@ -770,33 +872,45 @@ def main():
         )
         st.session_state.qa_chat_id = current_chat_id
 
-        # Load persisted messages
-        msgs = store.list_messages(uid, current_chat_id)
-        st.session_state.messages = [
-            {"role": m.get("role", "assistant"), "content": m.get("content", ""), "sources": m.get("sources", [])}
-            for m in msgs
-        ]
+        if uid and store:
+            # Load persisted messages
+            msgs = store.list_messages(uid, current_chat_id)
+            st.session_state.messages = [
+                {"role": m.get("role", "assistant"), "content": m.get("content", ""), "sources": m.get("sources", [])}
+                for m in msgs
+            ]
 
-        # Load persisted chunks/embeddings and rebuild RAG index (if any)
-        try:
-            chunks, embeddings, metas = store.load_chunks(uid, current_chat_id)
-            if chunks and embeddings and len(embeddings[0]) > 0:
-                st.session_state.qa_system.rag.load_cached_index(chunks, embeddings, metas)
-                st.session_state.documents_loaded = True
-                # Infer loaded file names (best-effort)
-                file_names = []
-                for meta in metas:
-                    name = meta.get("document_name") or meta.get("file_name")
-                    if name and name not in file_names:
-                        file_names.append(name)
-                st.session_state.loaded_files = file_names
-            else:
+            # Load persisted chunks/embeddings and rebuild RAG index (if any)
+            try:
+                chunks, embeddings, metas = store.load_chunks(uid, current_chat_id)
+                if chunks and embeddings and len(embeddings[0]) > 0:
+                    st.session_state.qa_system.rag.load_cached_index(chunks, embeddings, metas)
+                    st.session_state.documents_loaded = True
+                    # Infer loaded file names (best-effort)
+                    file_names = []
+                    for meta in metas:
+                        name = meta.get("document_name") or meta.get("file_name")
+                        if name and name not in file_names:
+                            file_names.append(name)
+                    st.session_state.loaded_files = file_names
+                else:
+                    st.session_state.documents_loaded = False
+                    st.session_state.loaded_files = []
+            except Exception as e:
+                logger.warning(f"Failed to load persisted document context: {e}")
                 st.session_state.documents_loaded = False
                 st.session_state.loaded_files = []
-        except Exception as e:
-            logger.warning(f"Failed to load persisted document context: {e}")
-            st.session_state.documents_loaded = False
-            st.session_state.loaded_files = []
+        else:
+            # Anonymous/local session: restore in-memory state for this chat
+            st.session_state.messages = st.session_state.local_messages_by_chat.get(current_chat_id, [])
+            st.session_state.documents_loaded = bool(st.session_state.local_docs_loaded_by_chat.get(current_chat_id, False))
+            st.session_state.loaded_files = st.session_state.local_files_by_chat.get(current_chat_id, [])
+            payload = st.session_state.local_docs_by_chat.get(current_chat_id)
+            try:
+                if payload and payload.get("chunks") and payload.get("embeddings"):
+                    st.session_state.qa_system.rag.load_cached_index(payload["chunks"], payload["embeddings"], payload.get("metadata", []))
+            except Exception as e:
+                logger.warning(f"Failed to restore local document context: {e}")
 
     # Sidebar - persisted chats
     with st.sidebar:
@@ -823,9 +937,12 @@ def main():
 
         st.markdown("---")
         st.markdown("### 👤 User")
-        st.markdown(f"**{fb_user.name or fb_user.email or fb_user.uid}**")
-        if fb_user.email:
-            st.caption(fb_user.email)
+        if fb_user:
+            st.markdown(f"**{fb_user.name or fb_user.email or fb_user.uid}**")
+            if fb_user.email:
+                st.caption(fb_user.email)
+        else:
+            st.caption("Anonymous session (not saved). Refreshing the page will clear this chat.")
 
     # Show persistent status indicator if documents are loaded (at top)
     if st.session_state.documents_loaded:
@@ -965,7 +1082,7 @@ def main():
                                     file_path = save_uploaded_file(uploaded_file)
                                     file_paths.append(file_path)
                                     # Persist original upload to GCS only if privacy mode is OFF (best-effort)
-                                    if not st.session_state.get("privacy_mode", True):
+                                    if uid and store and (not st.session_state.get("privacy_mode", True)):
                                         gcs = get_gcs_store()
                                         if gcs:
                                             try:
@@ -985,7 +1102,7 @@ def main():
                                     st.session_state.documents_loaded = True
                                     st.session_state.loaded_files = [f.name for f in quick_upload]
                                     st.session_state.show_file_upload = False
-                                    # Persist chunks/embeddings for this chat
+                                    # Persist chunks/embeddings for this chat (signed-in) OR keep in-memory (anonymous)
                                     try:
                                         payload = st.session_state.qa_system.rag.export_cached_index()
                                         if payload.get("chunks") and payload.get("embeddings"):
@@ -1004,23 +1121,32 @@ def main():
                                                             mm[key] = sanitize_filename(str(mm[key]))
                                                     safe_metas.append(mm)
                                                 metas = safe_metas
-                                            store.replace_chunks(
-                                                uid=uid,
-                                                chat_id=current_chat_id,
-                                                chunks=chunks,
-                                                embeddings=payload["embeddings"],
-                                                metadatas=metas,
-                                            )
-                                            store.update_chat(
-                                                uid,
-                                                current_chat_id,
-                                                doc_count=len(quick_upload),
-                                                files=[
-                                                    sanitize_filename(f.name) if st.session_state.get("privacy_mode", True) else f.name
-                                                    for f in quick_upload
-                                                ],
-                                                gcs_uris=uploaded_uris,
-                                            )
+                                            if uid and store:
+                                                store.replace_chunks(
+                                                    uid=uid,
+                                                    chat_id=current_chat_id,
+                                                    chunks=chunks,
+                                                    embeddings=payload["embeddings"],
+                                                    metadatas=metas,
+                                                )
+                                                store.update_chat(
+                                                    uid,
+                                                    current_chat_id,
+                                                    doc_count=len(quick_upload),
+                                                    files=[
+                                                        sanitize_filename(f.name) if st.session_state.get("privacy_mode", True) else f.name
+                                                        for f in quick_upload
+                                                    ],
+                                                    gcs_uris=uploaded_uris,
+                                                )
+                                            else:
+                                                st.session_state.local_docs_by_chat[current_chat_id] = {
+                                                    "chunks": chunks,
+                                                    "embeddings": payload["embeddings"],
+                                                    "metadata": metas,
+                                                }
+                                                st.session_state.local_docs_loaded_by_chat[current_chat_id] = True
+                                                st.session_state.local_files_by_chat[current_chat_id] = [f.name for f in quick_upload]
                                     except Exception as e:
                                         logger.warning(f"Failed to persist document context: {e}")
                                     st.session_state.load_success_message = f" Successfully loaded {result['num_files']} file(s) ({result.get('num_chunks', 0)} chunks). Ready to answer questions!"
@@ -1047,14 +1173,23 @@ def main():
                                                     redact_text(c, extra_terms=st.session_state.get("pii_extra_terms", [])).text
                                                     for c in chunks
                                                 ]
-                                            store.replace_chunks(
-                                                uid=uid,
-                                                chat_id=current_chat_id,
-                                                chunks=chunks,
-                                                embeddings=payload["embeddings"],
-                                                metadatas=metas,
-                                            )
-                                            store.update_chat(uid, current_chat_id, doc_count=1, files=["Text Input"])
+                                            if uid and store:
+                                                store.replace_chunks(
+                                                    uid=uid,
+                                                    chat_id=current_chat_id,
+                                                    chunks=chunks,
+                                                    embeddings=payload["embeddings"],
+                                                    metadatas=metas,
+                                                )
+                                                store.update_chat(uid, current_chat_id, doc_count=1, files=["Text Input"])
+                                            else:
+                                                st.session_state.local_docs_by_chat[current_chat_id] = {
+                                                    "chunks": chunks,
+                                                    "embeddings": payload["embeddings"],
+                                                    "metadata": metas,
+                                                }
+                                                st.session_state.local_docs_loaded_by_chat[current_chat_id] = True
+                                                st.session_state.local_files_by_chat[current_chat_id] = ["Text Input"]
                                     except Exception as e:
                                         logger.warning(f"Failed to persist text context: {e}")
                                     st.session_state.load_success_message = f" Successfully loaded text ({result.get('num_chunks', 0)} chunks). Ready to answer questions!"
@@ -1107,20 +1242,32 @@ def main():
 
             # Add user message to chat
             st.session_state.messages.append({"role": "user", "content": prompt})
-            try:
-                to_store = (
-                    redact_text(prompt, extra_terms=st.session_state.get("pii_extra_terms", [])).text
-                    if st.session_state.get("privacy_mode", True)
-                    else prompt
-                )
-                store.add_message(uid, current_chat_id, role="user", content=to_store)
-                # If this is the first user message, use it as chat title
+            to_store = (
+                redact_text(prompt, extra_terms=st.session_state.get("pii_extra_terms", [])).text
+                if st.session_state.get("privacy_mode", True)
+                else prompt
+            )
+            if uid and store:
+                try:
+                    store.add_message(uid, current_chat_id, role="user", content=to_store)
+                    # If this is the first user message, use it as chat title
+                    if len([m for m in st.session_state.messages if m.get("role") == "user"]) == 1:
+                        title_seed = to_store
+                        title = title_seed[:60] + ("..." if len(title_seed) > 60 else "")
+                        store.update_chat(uid, current_chat_id, title=title)
+                except Exception as e:
+                    logger.warning(f"Failed to persist user message: {e}")
+            else:
+                # Anonymous/local: keep messages and title in session state only.
+                st.session_state.local_messages_by_chat[current_chat_id] = list(st.session_state.messages)
+                # Set title on first user message
                 if len([m for m in st.session_state.messages if m.get("role") == "user"]) == 1:
-                    title_seed = to_store
-                    title = title_seed[:60] + ("..." if len(title_seed) > 60 else "")
-                    store.update_chat(uid, current_chat_id, title=title)
-            except Exception as e:
-                logger.warning(f"Failed to persist user message: {e}")
+                    title = to_store[:60] + ("..." if len(to_store) > 60 else "")
+                    for c in st.session_state.local_chats:
+                        if c.get("chat_id") == current_chat_id:
+                            c["title"] = title
+                            c["updated_at"] = datetime.utcnow().isoformat()
+                            break
 
             # Check if user wants a summary (use MedicalSummarizer)
             prompt_lower = prompt.lower().strip()
@@ -1165,20 +1312,33 @@ def main():
                     st.session_state.messages.append(
                         {"role": "assistant", "content": answer, "sources": sources, "_question": prompt}
                     )
-                    try:
-                        to_store_answer = (
-                            redact_text(answer, extra_terms=st.session_state.get("pii_extra_terms", [])).text
-                            if st.session_state.get("privacy_mode", True)
-                            else answer
-                        )
-                        to_store_sources = (
-                            redact_sources(sources, extra_terms=st.session_state.get("pii_extra_terms", []))
-                            if st.session_state.get("privacy_mode", True)
-                            else sources
-                        )
-                        store.add_message(uid, current_chat_id, role="assistant", content=to_store_answer, sources=to_store_sources)
-                    except Exception as e:
-                        logger.warning(f"Failed to persist assistant message: {e}")
+                    to_store_answer = (
+                        redact_text(answer, extra_terms=st.session_state.get("pii_extra_terms", [])).text
+                        if st.session_state.get("privacy_mode", True)
+                        else answer
+                    )
+                    to_store_sources = (
+                        redact_sources(sources, extra_terms=st.session_state.get("pii_extra_terms", []))
+                        if st.session_state.get("privacy_mode", True)
+                        else sources
+                    )
+                    if uid and store:
+                        try:
+                            store.add_message(
+                                uid,
+                                current_chat_id,
+                                role="assistant",
+                                content=to_store_answer,
+                                sources=to_store_sources,
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to persist assistant message: {e}")
+                    else:
+                        st.session_state.local_messages_by_chat[current_chat_id] = list(st.session_state.messages)
+                        for c in st.session_state.local_chats:
+                            if c.get("chat_id") == current_chat_id:
+                                c["updated_at"] = datetime.utcnow().isoformat()
+                                break
 
                     # Rerun to display new messages and scroll to bottom
                     st.rerun()

@@ -15,6 +15,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.rag.rag_system import RAGSystem
 from src.training.gemini_inference import GeminiInference
+from src.privacy.redaction import redact_text
 from src.utils.error_handling import ErrorHandler, safe_execute
 from src.utils.logging_config import get_logger
 
@@ -85,7 +86,8 @@ class PatientQA:
                 "question": question,
             }
 
-        logger.info(f"Processing question: {question[:100]}...")
+        # Never log raw user text in case it contains PHI/PII.
+        logger.info("Processing patient question (content redacted from logs)")
 
         # Retrieve relevant chunks
         logger.info("Retrieving relevant information...")
@@ -132,13 +134,16 @@ Medications: {full_record.get('discharge_medications', 'N/A')}
         logger.info("Generating answer using Gemini...")
         try:
             # Use dedicated Q&A method if available, otherwise fallback to summarize
+            safe_question = redact_text(question).text
+            safe_context = redact_text(context).text
+
             if hasattr(self.gemini.model, "answer_question"):
                 answer = self.gemini.model.answer_question(
-                    question=question, context=context, temperature=0.3  # Lower temperature for more consistent answers
+                    question=safe_question, context=safe_context, temperature=0.3  # Lower temperature for more consistent answers
                 )
             else:
                 # Fallback to summarize method (older implementation)
-                prompt = self._create_prompt(question, context)
+                prompt = self._create_prompt(safe_question, safe_context)
                 answer = self.gemini.model.summarize(prompt, max_length=500)
                 answer = self._extract_answer(answer)
 
@@ -147,7 +152,9 @@ Medications: {full_record.get('discharge_medications', 'N/A')}
                 "question": question,
                 "sources": [
                     {
-                        "chunk": chunk_data["chunk"][:200] + "..." if len(chunk_data["chunk"]) > 200 else chunk_data["chunk"],
+                        "chunk": (
+                            redact_text(chunk_data["chunk"][:200] + "..." if len(chunk_data["chunk"]) > 200 else chunk_data["chunk"]).text
+                        ),
                         "score": chunk_data["score"],
                         "hadm_id": chunk_data["metadata"].get("hadm_id"),
                         "metadata": chunk_data["metadata"],

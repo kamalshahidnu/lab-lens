@@ -696,8 +696,11 @@ class RAGSystem:
 
         # Log scores for debugging
         if scores_list:
+            # Never log raw query text (may contain PHI/PII).
             logger.info(
-                f"Retrieved {len(results)} chunks for query: {query[:50]}... (scores: min={min(scores_list):.3f}, max={max(scores_list):.3f}, mean={sum(scores_list)/len(scores_list):.3f}, threshold={min_score})"
+                f"Retrieved {len(results)} chunks for query (redacted from logs) "
+                f"(scores: min={min(scores_list):.3f}, max={max(scores_list):.3f}, "
+                f"mean={sum(scores_list)/len(scores_list):.3f}, threshold={min_score})"
             )
         else:
             logger.warning(

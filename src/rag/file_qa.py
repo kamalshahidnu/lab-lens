@@ -20,6 +20,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from src.rag.document_processor import DocumentProcessor
 from src.rag.rag_system import RAGSystem
 from src.rag.vector_db import CHROMADB_AVAILABLE, VectorDatabase
+from src.privacy.redaction import redact_sources, redact_text
 
 # Import FAISS availability check.
 # NOTE: On some macOS environments, importing `faiss` can segfault (native binary mismatch).
@@ -87,6 +88,9 @@ class FileQA:
         user_id: Optional[str] = None,
         collection_name: str = "file_qa_documents",
         simplify_medical_terms: bool = True,
+        privacy_mode: bool = True,
+        allow_external_calls: bool = True,
+        pii_extra_terms: Optional[List[str]] = None,
     ):
         """
         Initialize File Q&A system
@@ -107,6 +111,9 @@ class FileQA:
         self.use_vector_db = use_vector_db and CHROMADB_AVAILABLE
         self.user_id = user_id
         self.simplify_medical_terms = simplify_medical_terms and MEDICAL_UTILS_AVAILABLE
+        self.privacy_mode = privacy_mode
+        self.allow_external_calls = allow_external_calls
+        self.pii_extra_terms = pii_extra_terms or []
 
         # Optional: call the deployed API backend for summarization if configured.
         self.api_base_url = (os.getenv("LAB_LENS_API_URL") or os.getenv("LAB_LENS_API_BASE_URL") or "").strip()
@@ -132,7 +139,12 @@ class FileQA:
                 self.simplify_medical_terms = False
 
         # Initialize document processor
-        self.doc_processor = DocumentProcessor(gemini_api_key=gemini_api_key)
+        # In privacy mode we disable Gemini Vision (images should not be sent to Gemini).
+        self.doc_processor = DocumentProcessor(
+            gemini_api_key=gemini_api_key,
+            allow_external_calls=self.allow_external_calls,
+            allow_gemini_vision=(not self.privacy_mode),
+        )
 
         # Initialize RAG system (without loading data)
         logger.info(f"Initializing RAG system (use_biobert={use_biobert})...")
@@ -410,6 +422,33 @@ class FileQA:
                 "question": question,
             }
 
+        # Strict local mode: do not call external LLMs at all.
+        if not self.allow_external_calls:
+            try:
+                retrieved = self.rag.retrieve(query=question, k=min(self.rag_k, 5), min_score=0.0)
+            except Exception as e:
+                return {"answer": f"Local mode: retrieval failed ({e})", "error": str(e), "question": question}
+
+            safe_sources = redact_sources(retrieved, extra_terms=self.pii_extra_terms) if self.privacy_mode else retrieved
+            if not safe_sources:
+                return {
+                    "answer": "Local mode: no matching excerpts found in the loaded documents.",
+                    "sources": [],
+                    "question": question,
+                    "answer_source": "local_excerpts",
+                }
+
+            excerpts = "\n\n".join([f"- {s.get('chunk','')[:600]}..." for s in safe_sources[:3]])
+            return {
+                "answer": (
+                    "Local-only mode is enabled (no external AI calls). Here are the most relevant excerpts I found:\n\n"
+                    + excerpts
+                ),
+                "sources": safe_sources,
+                "question": question,
+                "answer_source": "local_excerpts",
+            }
+
         # Validate RAG system is fully initialized before retrieving
         if not self.rag.embedding_model:
             error_msg = "RAG system embedding model not initialized. Please reload documents."
@@ -429,7 +468,8 @@ class FileQA:
                 "question": question,
             }
 
-        logger.info(f"Processing question: {question[:100]}...")
+        # Never log raw user text in case it contains PHI/PII.
+        logger.info("Processing user question (content redacted from logs)")
         logger.info(f"RAG system ready: {len(self.rag.chunks)} chunks, index built: {has_faiss or has_numpy}")
 
         # Retrieve relevant chunks
@@ -493,38 +533,64 @@ class FileQA:
             document_context = "\n\n".join(context_parts)
             logger.info("Using sample document chunks for context (no direct matches found)")
 
+        # Build the prompt using redacted content (privacy mode).
+        # We keep retrieval on the original question (local), but redact before sending to Gemini.
+        question_for_llm = question
+        if self.privacy_mode:
+            question_for_llm = redact_text(question, extra_terms=self.pii_extra_terms).text
+
+        document_context_for_llm = document_context
+        if self.privacy_mode and document_context:
+            document_context_for_llm = redact_text(document_context, extra_terms=self.pii_extra_terms).text
+
         # Generate answer using Gemini with hybrid approach
         logger.info("Generating answer using Gemini (hybrid: document + general knowledge)...")
         try:
             # Create a prompt that uses document if available, but allows general knowledge
             if document_context and has_good_matches:
                 # Strong document match - prioritize document
-                prompt = f"""You are a helpful medical assistant. Answer the patient's question based on the information from their medical report/document below. If the document doesn't contain enough information, you may supplement with your general medical knowledge, but clearly indicate what comes from the document vs. general knowledge.
+                prompt = f"""You are a helpful medical assistant. The user is asking about their medical report.
+IMPORTANT PRIVACY RULES:
+- Do NOT output any personal identifiers (names, emails, phone numbers, MRN/Patient IDs, addresses, exact dates of birth).
+- Some content may already be redacted like [REDACTED_*]. Do not attempt to reconstruct it.
+- If an answer would require personal identifiers, respond without them.
+
+Answer based on the document content below. If the document doesn't contain enough information, you may supplement with general medical knowledge, but clearly indicate what comes from the document vs. general knowledge.
 
 DOCUMENT CONTENT:
-{document_context}
+{document_context_for_llm}
 
-PATIENT'S QUESTION: {question}
+USER QUESTION: {question_for_llm}
 
 ANSWER:"""
             elif document_context:
                 # Weak document match - use document as context but allow general knowledge
-                prompt = f"""You are a helpful medical assistant. The patient has asked a question about their medical report. The document content below may or may not directly answer the question. Please:
+                prompt = f"""You are a helpful medical assistant. The user has asked a question about their medical report.
+IMPORTANT PRIVACY RULES:
+- Do NOT output any personal identifiers (names, emails, phone numbers, MRN/Patient IDs, addresses, exact dates of birth).
+- Some content may already be redacted like [REDACTED_*]. Do not attempt to reconstruct it.
+
+The document content below may or may not directly answer the question. Please:
 1. First try to answer based on the document if relevant
 2. If the document doesn't contain the answer, use your general medical knowledge to help
 3. Clearly indicate when you're using general knowledge vs. document information
 
 DOCUMENT CONTENT (may be partially relevant):
-{document_context}
+{document_context_for_llm}
 
-PATIENT'S QUESTION: {question}
+USER QUESTION: {question_for_llm}
 
 ANSWER:"""
             else:
                 # No document context - use general knowledge
-                prompt = f"""You are a helpful medical assistant. The patient has asked a medical question. Please answer using your general medical knowledge. Be clear, accurate, and helpful.
+                prompt = f"""You are a helpful medical assistant.
+IMPORTANT PRIVACY RULES:
+- Do NOT output any personal identifiers (names, emails, phone numbers, MRN/Patient IDs, addresses, exact dates of birth).
+- Do not ask the user to provide personal identifiers.
 
-PATIENT'S QUESTION: {question}
+The user has asked a medical question. Please answer using general medical knowledge. Be clear, accurate, and helpful.
+
+USER QUESTION: {question_for_llm}
 
 ANSWER:"""
 
@@ -571,11 +637,13 @@ ANSWER:"""
             else:
                 answer_source = "general_knowledge"
 
+            safe_sources = redact_sources(retrieved_chunks, extra_terms=self.pii_extra_terms) if self.privacy_mode else retrieved_chunks
+
             return {
                 "answer": answer,
-                "sources": retrieved_chunks if retrieved_chunks else [],
+                "sources": safe_sources if safe_sources else [],
                 "question": question,
-                "num_sources": len(retrieved_chunks) if retrieved_chunks else 0,
+                "num_sources": len(safe_sources) if safe_sources else 0,
                 "answer_source": answer_source,  # Indicates where answer came from
             }
 
@@ -646,26 +714,62 @@ ANSWER:"""
         # Clean PDF extraction artifacts
         text = self._clean_pdf_text(text)
 
+        # Strict local mode: do not call external LLMs at all.
+        if not self.allow_external_calls:
+            sample = "\n\n".join(self.rag.chunks[:6])
+            sample = self._clean_pdf_text(sample)
+            if self.privacy_mode:
+                sample = redact_text(sample, extra_terms=self.pii_extra_terms).text
+            return {
+                "success": True,
+                "summary": "Local-only mode is enabled (no external AI calls). Showing a redacted excerpt of the document:\n\n"
+                + sample[:4000],
+                "raw_summary": "",
+                "extracted_data": {},
+                "error": None,
+            }
+
         # Try using Gemini for summarization first (more reliable)
         try:
-            summary_prompt = (
-                """Please provide a comprehensive summary of this medical document. Include:
-1. Patient information (if available)
-2. Key diagnoses and findings
-3. Important test results or measurements
-4. Recommendations or treatment plans
-5. Any critical alerts or abnormal values
+            safe_text = text[:15000]
+            if self.privacy_mode:
+                safe_text = redact_text(safe_text, extra_terms=self.pii_extra_terms).text
 
-Document:
-"""
-                + text[:15000]
-            )  # Limit text length for API
+            summary_prompt = f"""You are a helpful medical assistant.
+IMPORTANT PRIVACY RULES:
+- Do NOT output any personal identifiers (names, emails, phone numbers, MRN/Patient IDs, addresses, exact dates of birth).
+- Some content may be redacted like [REDACTED_*]. Do not attempt to reconstruct it.
 
-            result = self.ask_question(summary_prompt)
-            if result.get("answer") and "error" not in result.get("answer", "").lower():
+Provide a comprehensive summary of this medical document. Focus on:
+1. Key diagnoses and findings
+2. Important test results or measurements
+3. Recommendations or treatment plans
+4. Any critical alerts or abnormal values
+
+Document (redacted if needed):
+{safe_text}
+
+Summary:"""
+
+            if GEMINI_AVAILABLE:
+                model = genai.GenerativeModel(self.gemini.model.model_name)
+                response = model.generate_content(
+                    summary_prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.4,
+                        max_output_tokens=2048,
+                    ),
+                )
+                answer = (response.text or "").strip()
+            else:
+                model = self.gemini.model.model
+                response = model.generate_content(summary_prompt)
+                answer = (response.text or "").strip()
+
+            if answer:
                 return {
                     "success": True,
-                    "summary": result.get("answer", ""),
+                    "summary": answer,
                     "raw_summary": "",
                     "extracted_data": {},
                     "error": None,

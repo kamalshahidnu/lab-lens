@@ -61,7 +61,13 @@ except ImportError:
 class DocumentProcessor:
     """Process various document types (text, PDF, images) for RAG"""
 
-    def __init__(self, gemini_api_key: Optional[str] = None):
+    def __init__(
+        self,
+        gemini_api_key: Optional[str] = None,
+        *,
+        allow_external_calls: bool = True,
+        allow_gemini_vision: bool = True,
+    ):
         """
         Initialize document processor
 
@@ -70,8 +76,10 @@ class DocumentProcessor:
         """
         self.error_handler = ErrorHandler(logger)
         self.gemini_api_key = gemini_api_key
+        self.allow_external_calls = allow_external_calls
+        self.allow_gemini_vision = allow_gemini_vision
 
-        if gemini_api_key and GEMINI_VISION_AVAILABLE:
+        if allow_external_calls and allow_gemini_vision and gemini_api_key and GEMINI_VISION_AVAILABLE:
             try:
                 genai.configure(api_key=gemini_api_key)
                 logger.info("Gemini Vision API configured for image processing")
@@ -203,7 +211,7 @@ class DocumentProcessor:
                 logger.warning(f"OCR failed: {e}")
 
         # Method 2: Gemini Vision analysis (for medical images)
-        if self.gemini_api_key and GEMINI_VISION_AVAILABLE:
+        if self.allow_external_calls and self.allow_gemini_vision and self.gemini_api_key and GEMINI_VISION_AVAILABLE:
             try:
                 logger.info("Analyzing image with Gemini Vision...")
                 vision_text = self._analyze_with_gemini_vision(image, file_path)

@@ -24,6 +24,7 @@ from src.rag.file_qa import FileQA
 from src.auth.firebase import FirebaseUser, verify_firebase_id_token
 from src.storage.firestore_store import FirestoreStore
 from src.storage.gcs_store import GCSStore
+from src.privacy.redaction import redact_sources, redact_text, sanitize_filename
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -559,7 +560,14 @@ def ensure_user() -> Optional[FirebaseUser]:
         return None
 
 
-def initialize_qa_system(user_id: Optional[str] = None, use_biobert: bool = False):
+def initialize_qa_system(
+    user_id: Optional[str] = None,
+    use_biobert: bool = False,
+    *,
+    privacy_mode: bool = True,
+    allow_external_calls: bool = True,
+    pii_extra_terms: Optional[list[str]] = None,
+):
     """
     Initialize the File QA system with optional user-specific vector database
 
@@ -592,7 +600,14 @@ def initialize_qa_system(user_id: Optional[str] = None, use_biobert: bool = Fals
             try:
                 logger.info("Attempting to initialize with BioBERT...")
                 qa_system = FileQA(
-                    gemini_api_key=api_key, use_biobert=True, use_vector_db=True, user_id=user_id, simplify_medical_terms=True
+                    gemini_api_key=api_key,
+                    use_biobert=True,
+                    use_vector_db=True,
+                    user_id=user_id,
+                    simplify_medical_terms=True,
+                    privacy_mode=privacy_mode,
+                    allow_external_calls=allow_external_calls,
+                    pii_extra_terms=pii_extra_terms,
                 )
                 # Verify embedding model is loaded
                 if qa_system.rag.embedding_model is None:
@@ -611,6 +626,9 @@ def initialize_qa_system(user_id: Optional[str] = None, use_biobert: bool = Fals
                 use_vector_db=True,
                 user_id=user_id,
                 simplify_medical_terms=True,
+                privacy_mode=privacy_mode,
+                allow_external_calls=allow_external_calls,
+                pii_extra_terms=pii_extra_terms,
             )
             # Verify embedding model is loaded
             if qa_system.rag.embedding_model is None:
@@ -645,7 +663,12 @@ def create_new_chat(uid: str, store: FirestoreStore):
     st.session_state.loaded_files = []
     st.session_state.show_file_upload = False
     st.session_state.load_success_message = None
-    st.session_state.qa_system = initialize_qa_system(user_id=uid)
+    st.session_state.qa_system = initialize_qa_system(
+        user_id=uid,
+        privacy_mode=st.session_state.get("privacy_mode", True),
+        allow_external_calls=st.session_state.get("allow_external_calls", True),
+        pii_extra_terms=st.session_state.get("pii_extra_terms", []),
+    )
 
 
 def main():
@@ -670,6 +693,12 @@ def main():
         st.session_state.show_file_upload = False
     if "load_success_message" not in st.session_state:
         st.session_state.load_success_message = None
+    if "privacy_mode" not in st.session_state:
+        st.session_state.privacy_mode = True
+    if "allow_external_calls" not in st.session_state:
+        st.session_state.allow_external_calls = True
+    if "pii_extra_terms" not in st.session_state:
+        st.session_state.pii_extra_terms = []
 
     fb_user = ensure_user()
     store = get_firestore_store() if fb_user else None
@@ -691,6 +720,30 @@ def main():
         # Signed-in user
         st.caption(f"Signed in as: **{fb_user.email or fb_user.uid}**")
         st.markdown("---")
+        st.markdown("### 🔒 Privacy")
+        st.session_state.privacy_mode = st.toggle(
+            "Redact personal identifiers before storing / sending to Gemini",
+            value=bool(st.session_state.get("privacy_mode", True)),
+        )
+        can_local_only = os.getenv("K_SERVICE") is None
+        st.session_state.allow_external_calls = st.toggle(
+            "Local-only mode (disable external AI calls)",
+            value=bool(st.session_state.get("allow_external_calls", True)),
+            disabled=not can_local_only,
+            help="Only available when running locally (not on Cloud Run).",
+        )
+        if not can_local_only:
+            # Safety: never disable external calls in Cloud Run via a sticky session value.
+            st.session_state.allow_external_calls = True
+        pii_terms = st.text_input(
+            "Extra terms to redact (comma-separated)",
+            value=",".join(st.session_state.get("pii_extra_terms", [])),
+            help="Optional: add names/clinics/IDs you want always redacted.",
+        )
+        st.session_state.pii_extra_terms = [t.strip() for t in pii_terms.split(",") if t.strip()]
+        if st.session_state.allow_external_calls is False:
+            st.info("Local-only mode: no calls to Gemini/Vision APIs will be made.")
+        st.markdown("---")
 
     # --- Load chats + current chat selection ---
     assert fb_user is not None and store is not None
@@ -709,7 +762,12 @@ def main():
 
     # Initialize / refresh QA system when switching chats
     if st.session_state.get("qa_system") is None or st.session_state.qa_chat_id != current_chat_id:
-        st.session_state.qa_system = initialize_qa_system(user_id=uid)
+        st.session_state.qa_system = initialize_qa_system(
+            user_id=uid,
+            privacy_mode=st.session_state.get("privacy_mode", True),
+            allow_external_calls=st.session_state.get("allow_external_calls", True),
+            pii_extra_terms=st.session_state.get("pii_extra_terms", []),
+        )
         st.session_state.qa_chat_id = current_chat_id
 
         # Load persisted messages
@@ -814,7 +872,7 @@ def main():
         </div>
       </div>
       <p style="color: #666; font-size: 0.75rem; text-align: center; margin-top: 0.75rem;">
-        🔒 Documents processed securely, not stored
+        🔒 Privacy mode: identifiers redacted; raw uploads not stored by default
       </p>
       """,
                 unsafe_allow_html=True,
@@ -906,20 +964,21 @@ def main():
                                 for uploaded_file in quick_upload:
                                     file_path = save_uploaded_file(uploaded_file)
                                     file_paths.append(file_path)
-                                    # Persist original upload to GCS (best-effort)
-                                    gcs = get_gcs_store()
-                                    if gcs:
-                                        try:
-                                            obj = gcs.upload_bytes(
-                                                uid=uid,
-                                                chat_id=current_chat_id,
-                                                filename=uploaded_file.name,
-                                                data=uploaded_file.getvalue(),
-                                                content_type=getattr(uploaded_file, "type", None),
-                                            )
-                                            uploaded_uris.append(obj.gs_uri)
-                                        except Exception as e:
-                                            logger.warning(f"GCS upload failed for {uploaded_file.name}: {e}")
+                                    # Persist original upload to GCS only if privacy mode is OFF (best-effort)
+                                    if not st.session_state.get("privacy_mode", True):
+                                        gcs = get_gcs_store()
+                                        if gcs:
+                                            try:
+                                                obj = gcs.upload_bytes(
+                                                    uid=uid,
+                                                    chat_id=current_chat_id,
+                                                    filename=uploaded_file.name,
+                                                    data=uploaded_file.getvalue(),
+                                                    content_type=getattr(uploaded_file, "type", None),
+                                                )
+                                                uploaded_uris.append(obj.gs_uri)
+                                            except Exception as e:
+                                                logger.warning(f"GCS upload failed for {uploaded_file.name}: {e}")
 
                                 result = st.session_state.qa_system.load_multiple_files(file_paths)
                                 if result.get("success"):
@@ -930,18 +989,36 @@ def main():
                                     try:
                                         payload = st.session_state.qa_system.rag.export_cached_index()
                                         if payload.get("chunks") and payload.get("embeddings"):
+                                            chunks = payload["chunks"]
+                                            metas = payload.get("metadata", [])
+                                            if st.session_state.get("privacy_mode", True):
+                                                chunks = [
+                                                    redact_text(c, extra_terms=st.session_state.get("pii_extra_terms", [])).text
+                                                    for c in chunks
+                                                ]
+                                                safe_metas = []
+                                                for m in metas:
+                                                    mm = dict(m or {})
+                                                    for key in ("document_name", "file_name"):
+                                                        if key in mm and mm.get(key):
+                                                            mm[key] = sanitize_filename(str(mm[key]))
+                                                    safe_metas.append(mm)
+                                                metas = safe_metas
                                             store.replace_chunks(
                                                 uid=uid,
                                                 chat_id=current_chat_id,
-                                                chunks=payload["chunks"],
+                                                chunks=chunks,
                                                 embeddings=payload["embeddings"],
-                                                metadatas=payload.get("metadata", []),
+                                                metadatas=metas,
                                             )
                                             store.update_chat(
                                                 uid,
                                                 current_chat_id,
                                                 doc_count=len(quick_upload),
-                                                files=[f.name for f in quick_upload],
+                                                files=[
+                                                    sanitize_filename(f.name) if st.session_state.get("privacy_mode", True) else f.name
+                                                    for f in quick_upload
+                                                ],
                                                 gcs_uris=uploaded_uris,
                                             )
                                     except Exception as e:
@@ -963,12 +1040,19 @@ def main():
                                     try:
                                         payload = st.session_state.qa_system.rag.export_cached_index()
                                         if payload.get("chunks") and payload.get("embeddings"):
+                                            chunks = payload["chunks"]
+                                            metas = payload.get("metadata", [])
+                                            if st.session_state.get("privacy_mode", True):
+                                                chunks = [
+                                                    redact_text(c, extra_terms=st.session_state.get("pii_extra_terms", [])).text
+                                                    for c in chunks
+                                                ]
                                             store.replace_chunks(
                                                 uid=uid,
                                                 chat_id=current_chat_id,
-                                                chunks=payload["chunks"],
+                                                chunks=chunks,
                                                 embeddings=payload["embeddings"],
-                                                metadatas=payload.get("metadata", []),
+                                                metadatas=metas,
                                             )
                                             store.update_chat(uid, current_chat_id, doc_count=1, files=["Text Input"])
                                     except Exception as e:
@@ -1024,10 +1108,16 @@ def main():
             # Add user message to chat
             st.session_state.messages.append({"role": "user", "content": prompt})
             try:
-                store.add_message(uid, current_chat_id, role="user", content=prompt)
+                to_store = (
+                    redact_text(prompt, extra_terms=st.session_state.get("pii_extra_terms", [])).text
+                    if st.session_state.get("privacy_mode", True)
+                    else prompt
+                )
+                store.add_message(uid, current_chat_id, role="user", content=to_store)
                 # If this is the first user message, use it as chat title
                 if len([m for m in st.session_state.messages if m.get("role") == "user"]) == 1:
-                    title = prompt[:60] + ("..." if len(prompt) > 60 else "")
+                    title_seed = to_store
+                    title = title_seed[:60] + ("..." if len(title_seed) > 60 else "")
                     store.update_chat(uid, current_chat_id, title=title)
             except Exception as e:
                 logger.warning(f"Failed to persist user message: {e}")
@@ -1076,7 +1166,17 @@ def main():
                         {"role": "assistant", "content": answer, "sources": sources, "_question": prompt}
                     )
                     try:
-                        store.add_message(uid, current_chat_id, role="assistant", content=answer, sources=sources)
+                        to_store_answer = (
+                            redact_text(answer, extra_terms=st.session_state.get("pii_extra_terms", [])).text
+                            if st.session_state.get("privacy_mode", True)
+                            else answer
+                        )
+                        to_store_sources = (
+                            redact_sources(sources, extra_terms=st.session_state.get("pii_extra_terms", []))
+                            if st.session_state.get("privacy_mode", True)
+                            else sources
+                        )
+                        store.add_message(uid, current_chat_id, role="assistant", content=to_store_answer, sources=to_store_sources)
                     except Exception as e:
                         logger.warning(f"Failed to persist assistant message: {e}")
 

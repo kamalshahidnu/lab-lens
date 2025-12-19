@@ -697,6 +697,9 @@ def main():
         st.session_state.privacy_mode = True
     if "allow_external_calls" not in st.session_state:
         st.session_state.allow_external_calls = True
+    if "local_only_mode" not in st.session_state:
+        # Back-compat default: local-only means external calls are disabled.
+        st.session_state.local_only_mode = not bool(st.session_state.get("allow_external_calls", True))
     if "pii_extra_terms" not in st.session_state:
         st.session_state.pii_extra_terms = []
 
@@ -726,14 +729,19 @@ def main():
             value=bool(st.session_state.get("privacy_mode", True)),
         )
         can_local_only = os.getenv("K_SERVICE") is None
-        st.session_state.allow_external_calls = st.toggle(
+        if not can_local_only:
+            # Safety: never disable external calls in Cloud Run via a sticky session value.
+            st.session_state.local_only_mode = False
+        local_only = st.toggle(
             "Local-only mode (disable external AI calls)",
-            value=bool(st.session_state.get("allow_external_calls", True)),
+            value=bool(st.session_state.get("local_only_mode", False)),
+            key="local_only_mode",
             disabled=not can_local_only,
             help="Only available when running locally (not on Cloud Run).",
         )
+        # IMPORTANT: local_only=True means allow_external_calls=False
+        st.session_state.allow_external_calls = not bool(local_only)
         if not can_local_only:
-            # Safety: never disable external calls in Cloud Run via a sticky session value.
             st.session_state.allow_external_calls = True
         pii_terms = st.text_input(
             "Extra terms to redact (comma-separated)",
@@ -741,7 +749,7 @@ def main():
             help="Optional: add names/clinics/IDs you want always redacted.",
         )
         st.session_state.pii_extra_terms = [t.strip() for t in pii_terms.split(",") if t.strip()]
-        if st.session_state.allow_external_calls is False:
+        if bool(local_only):
             st.info("Local-only mode: no calls to Gemini/Vision APIs will be made.")
         st.markdown("---")
 

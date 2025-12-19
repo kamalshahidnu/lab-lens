@@ -507,6 +507,8 @@ def render_google_sign_in() -> None:
   // Listen for token from the separate auth window
   window.addEventListener('message', (event) => {{
     try {{
+      // Only accept messages from our own origin.
+      if (event.origin !== window.location.origin) return;
       const data = event.data || {{}};
       if (data && data.type === 'LL_FIREBASE_TOKEN' && data.token) {{
         cacheToken(data.token);
@@ -520,7 +522,8 @@ def render_google_sign_in() -> None:
   }});
 
   function openGoogleAuthWindow() {{
-    const w = window.open("", "lab_lens_auth", "width=520,height=720,noopener,noreferrer");
+    // Important: do NOT use noopener/noreferrer; we need window.opener for postMessage.
+    const w = window.open("", "lab_lens_auth", "width=520,height=720");
     if (!w) {{
       setStatus("Popup blocked. Please allow popups for this site and try again.");
       return;
@@ -548,7 +551,7 @@ def render_google_sign_in() -> None:
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script>
-      const firebaseConfig = ${json.dumps(cfg)};
+      const firebaseConfig = {json.dumps(cfg)};
       const statusEl = document.getElementById('status');
       function setStatus(t) {{ statusEl.textContent = t || ''; }}
       try {{
@@ -558,32 +561,21 @@ def render_google_sign_in() -> None:
       const auth = firebase.auth();
       const provider = new firebase.auth.GoogleAuthProvider();
 
-      async function completeIfRedirected() {{
-        try {{
-          const result = await auth.getRedirectResult();
-          if (result && result.user) {{
-            const token = await result.user.getIdToken(true);
-            window.opener && window.opener.postMessage({{ type: 'LL_FIREBASE_TOKEN', token }}, '*');
-            setStatus('Signed in. You can close this window.');
-            setTimeout(() => window.close(), 300);
-          }}
-        }} catch (e) {{
-          console.error(e);
-          setStatus('Sign-in failed. Please try again.');
-        }}
-      }}
-
       document.getElementById('btnGo').addEventListener('click', async () => {{
         try {{
-          setStatus('Redirecting to Google…');
-          await auth.signInWithRedirect(provider);
+          setStatus('Opening Google sign-in…');
+          const result = await auth.signInWithPopup(provider);
+          const token = await result.user.getIdToken(true);
+          if (window.opener) {{
+            window.opener.postMessage({{ type: 'LL_FIREBASE_TOKEN', token }}, window.location.origin);
+          }}
+          setStatus('Signed in. You can close this window.');
+          setTimeout(() => window.close(), 300);
         }} catch (e) {{
           console.error(e);
           setStatus('Sign-in failed. Please try again.');
         }}
       }});
-
-      completeIfRedirected();
     </script>
   </body>
 </html>`;

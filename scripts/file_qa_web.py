@@ -472,6 +472,23 @@ def render_google_sign_in() -> None:
       </div>
     </div>
   </div>
+
+  <div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid #343541;">
+    <div style="font-size:0.85rem; opacity:0.9; margin-bottom:0.25rem;">Phone (OTP)</div>
+    <div style="display:flex; flex-direction:column; gap:0.4rem;">
+      <input id="phoneInput" type="tel" placeholder="+1 555 555 5555" style="padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#0e1117; color:#fff;">
+      <div style="display:flex; gap:0.5rem;">
+        <button id="btnPhoneSend" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#343541; color:#fff; cursor:pointer;">
+          Send code
+        </button>
+        <input id="otpInput" type="text" inputmode="numeric" placeholder="Code" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:#0e1117; color:#fff;">
+        <button id="btnPhoneVerify" style="flex:1; padding:0.55rem 0.65rem; border-radius:8px; border:1px solid #565869; background:transparent; color:#fff; cursor:pointer;">
+          Verify
+        </button>
+      </div>
+      <div id="recaptcha-container"></div>
+    </div>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -639,6 +656,68 @@ def render_google_sign_in() -> None:
     }}
   }}
 
+  // Phone auth requires reCAPTCHA verifier (web-only).
+  let phoneConfirmation = null;
+  let recaptchaVerifier = null;
+
+  function ensureRecaptcha() {{
+    if (recaptchaVerifier) return recaptchaVerifier;
+    try {{
+      recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {{
+        size: 'invisible'
+      }});
+      recaptchaVerifier.render().catch(console.error);
+      return recaptchaVerifier;
+    }} catch (e) {{
+      console.error(e);
+      setStatus("Phone sign-in isn’t available in this browser context. Please use email/password.");
+      return null;
+    }}
+  }}
+
+  async function phoneSendCode() {{
+    const auth = firebase.auth();
+    const phone = (document.getElementById('phoneInput')?.value || '').trim();
+    if (!phone) {{
+      setStatus("Enter a phone number in international format (e.g. +1...).");
+      return;
+    }}
+    const verifier = ensureRecaptcha();
+    if (!verifier) return;
+    try {{
+      setStatus("Sending verification code…");
+      phoneConfirmation = await auth.signInWithPhoneNumber(phone, verifier);
+      setStatus("Code sent. Enter it and click Verify.");
+    }} catch (err) {{
+      console.error(err);
+      setStatus("Could not send code. Please use email/password.");
+    }}
+  }}
+
+  async function phoneVerifyCode() {{
+    const code = (document.getElementById('otpInput')?.value || '').trim();
+    if (!phoneConfirmation) {{
+      setStatus("Click “Send code” first.");
+      return;
+    }}
+    if (!code) {{
+      setStatus("Enter the code you received.");
+      return;
+    }}
+    try {{
+      setStatus("Verifying…");
+      const result = await phoneConfirmation.confirm(code);
+      const token = await result.user.getIdToken(true);
+      cacheToken(token);
+      setStreamlitToken(token);
+      setStatus("Signed in.");
+      document.getElementById('btnSignOut').style.display = 'inline-block';
+    }} catch (err) {{
+      console.error(err);
+      setStatus("Invalid code. Try again or use email/password.");
+    }}
+  }}
+
   async function signOut() {{
     try {{
       await firebase.auth().signOut();
@@ -660,6 +739,8 @@ def render_google_sign_in() -> None:
   }}));
   document.getElementById('btnEmailSignIn').addEventListener('click', () => emailSignIn());
   document.getElementById('btnEmailSignUp').addEventListener('click', () => emailSignUp());
+  document.getElementById('btnPhoneSend').addEventListener('click', () => phoneSendCode());
+  document.getElementById('btnPhoneVerify').addEventListener('click', () => phoneVerifyCode());
   document.getElementById('btnSignOut').addEventListener('click', () => signOut().catch(console.error));
 
   // Handle redirect result (if the user used redirect sign-in)
@@ -829,7 +910,9 @@ def create_new_chat(uid: Optional[str], store: Optional[FirestoreStore]):
     if uid and store:
         store.create_chat(uid, chat_id, title="New chat")
     else:
-        st.session_state.local_chats.insert(0, {"chat_id": chat_id, "title": "New chat", "updated_at": datetime.utcnow().isoformat()})
+        st.session_state.local_chats.insert(
+            0, {"chat_id": chat_id, "title": "New chat", "updated_at": datetime.utcnow().isoformat()}
+        )
         st.session_state.local_messages_by_chat.setdefault(chat_id, [])
         st.session_state.local_docs_by_chat.pop(chat_id, None)
         st.session_state.local_files_by_chat[chat_id] = []
@@ -1077,30 +1160,57 @@ def main():
                     for i, source in enumerate(message["sources"][:3], 1):
                         score = source.get("score", 0)
                         raw_chunk = source.get("chunk", "")
-                        
+
                         # Clean PDF artifacts (cid:X codes)
                         import re
-                        cleaned_chunk = re.sub(r'\(cid:\d+\)', ' ', raw_chunk)
-                        cleaned_chunk = re.sub(r'\s+', ' ', cleaned_chunk).strip()
-                        
+
+                        cleaned_chunk = re.sub(r"\(cid:\d+\)", " ", raw_chunk)
+                        cleaned_chunk = re.sub(r"\s+", " ", cleaned_chunk).strip()
+
                         # Get a meaningful preview
                         preview = cleaned_chunk[:300] if cleaned_chunk else "[No text available]"
-                        
+
                         # Extract key terms from the user's question for highlighting
                         user_question = message.get("_question", "")
-                        
+
                         # Highlight relevant terms in the source
                         highlighted_preview = preview
                         if user_question:
                             # Extract important words (skip common words)
-                            stop_words = {'the', 'a', 'an', 'is', 'was', 'were', 'what', 'which', 'who', 'how', 'when', 'where', 'this', 'that', 'for', 'and', 'or', 'in', 'on', 'at', 'to', 'of', 'my', 'me', 'i'}
-                            key_words = [w for w in re.findall(r'\b\w{3,}\b', user_question.lower()) if w not in stop_words]
-                            
+                            stop_words = {
+                                "the",
+                                "a",
+                                "an",
+                                "is",
+                                "was",
+                                "were",
+                                "what",
+                                "which",
+                                "who",
+                                "how",
+                                "when",
+                                "where",
+                                "this",
+                                "that",
+                                "for",
+                                "and",
+                                "or",
+                                "in",
+                                "on",
+                                "at",
+                                "to",
+                                "of",
+                                "my",
+                                "me",
+                                "i",
+                            }
+                            key_words = [w for w in re.findall(r"\b\w{3,}\b", user_question.lower()) if w not in stop_words]
+
                             # Highlight matching words
                             for word in key_words[:5]:  # Limit to 5 key words
-                                pattern = re.compile(rf'\b({re.escape(word)})\b', re.IGNORECASE)
-                                highlighted_preview = pattern.sub(r'**\1**', highlighted_preview)
-                        
+                                pattern = re.compile(rf"\b({re.escape(word)})\b", re.IGNORECASE)
+                                highlighted_preview = pattern.sub(r"**\1**", highlighted_preview)
+
                         st.caption(f"Source {i} (relevance: {score:.3f})")
                         st.markdown(f"> {highlighted_preview}{'...' if len(cleaned_chunk) > 300 else ''}")
 
@@ -1169,7 +1279,9 @@ def main():
                                             metas = payload.get("metadata", [])
                                             if st.session_state.get("privacy_mode", True):
                                                 chunks = [
-                                                    redact_text(c, extra_terms=st.session_state.get("pii_extra_terms", [])).text
+                                                    redact_text(
+                                                        c, extra_terms=st.session_state.get("pii_extra_terms", [])
+                                                    ).text
                                                     for c in chunks
                                                 ]
                                                 safe_metas = []
@@ -1193,7 +1305,11 @@ def main():
                                                     current_chat_id,
                                                     doc_count=len(quick_upload),
                                                     files=[
-                                                        sanitize_filename(f.name) if st.session_state.get("privacy_mode", True) else f.name
+                                                        (
+                                                            sanitize_filename(f.name)
+                                                            if st.session_state.get("privacy_mode", True)
+                                                            else f.name
+                                                        )
                                                         for f in quick_upload
                                                     ],
                                                     gcs_uris=uploaded_uris,
@@ -1205,7 +1321,9 @@ def main():
                                                     "metadata": metas,
                                                 }
                                                 st.session_state.local_docs_loaded_by_chat[current_chat_id] = True
-                                                st.session_state.local_files_by_chat[current_chat_id] = [f.name for f in quick_upload]
+                                                st.session_state.local_files_by_chat[current_chat_id] = [
+                                                    f.name for f in quick_upload
+                                                ]
                                     except Exception as e:
                                         logger.warning(f"Failed to persist document context: {e}")
                                     st.session_state.load_success_message = f" Successfully loaded {result['num_files']} file(s) ({result.get('num_chunks', 0)} chunks). Ready to answer questions!"
@@ -1229,7 +1347,9 @@ def main():
                                             metas = payload.get("metadata", [])
                                             if st.session_state.get("privacy_mode", True):
                                                 chunks = [
-                                                    redact_text(c, extra_terms=st.session_state.get("pii_extra_terms", [])).text
+                                                    redact_text(
+                                                        c, extra_terms=st.session_state.get("pii_extra_terms", [])
+                                                    ).text
                                                     for c in chunks
                                                 ]
                                             if uid and store:

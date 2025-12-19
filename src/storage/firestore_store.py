@@ -163,9 +163,13 @@ class FirestoreStore:
         # Update counts
         self.update_chat(uid, chat_id, chunk_count=len(chunks))
 
-    def load_chunks(self, uid: str, chat_id: str, limit: int = 5000) -> Tuple[List[str], List[List[float]], List[Dict[str, Any]]]:
+    def load_chunks(
+        self, uid: str, chat_id: str, limit: int = 5000
+    ) -> Tuple[List[str], List[List[float]], List[Dict[str, Any]]]:
         chunks_ref = self._client.collection("users").document(uid).collection("chats").document(chat_id).collection("chunks")
-        query = chunks_ref.order_by(self._firestore.FieldPath.document_id(), direction=self._firestore.Query.ASCENDING).limit(limit)
+        query = chunks_ref.order_by(self._firestore.FieldPath.document_id(), direction=self._firestore.Query.ASCENDING).limit(
+            limit
+        )
         chunks: List[str] = []
         embeddings: List[List[float]] = []
         metas: List[Dict[str, Any]] = []
@@ -175,4 +179,3 @@ class FirestoreStore:
             embeddings.append(list(data.get("embedding", [])))
             metas.append(dict(data.get("metadata", {})))
         return chunks, embeddings, metas
-

@@ -11,7 +11,7 @@ import platform
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Disable MPS (Apple Silicon GPU) before importing torch to prevent meta tensor errors
 # This must be done before any torch import
@@ -345,6 +345,9 @@ class RAGSystem:
 
             logger.info(f"Generated embeddings with shape: {embeddings.shape}")
 
+            # Keep a copy so the caller can persist/re-hydrate without re-embedding.
+            self._last_embeddings = embeddings
+
             # Build index
             self._build_index(embeddings)
 
@@ -431,6 +434,9 @@ class RAGSystem:
 
         logger.info(f"Generating embeddings for {len(self.chunks)} chunks...")
         embeddings = self._generate_embeddings()
+
+        # Keep a copy so the caller can persist/re-hydrate without re-embedding.
+        self._last_embeddings = embeddings
 
         # Build index
         self._build_index(embeddings)
@@ -568,6 +574,42 @@ class RAGSystem:
             except Exception as e:
                 logger.error(f"Failed to build numpy-based index: {e}", exc_info=True)
                 raise ValueError(f"Failed to build numpy-based index: {e}")
+
+    def export_cached_index(self) -> Dict[str, Any]:
+        """
+        Export the currently loaded chunks + embeddings + metadata for persistence.
+        """
+        if not self.chunks or not self.metadata:
+            return {"chunks": [], "embeddings": [], "metadata": []}
+        embeddings = getattr(self, "_last_embeddings", None)
+        if embeddings is None and self.embedding_model:
+            # Fallback: compute embeddings if not cached (should be rare)
+            embeddings = self.embedding_model.encode(self.chunks, convert_to_numpy=True)
+        if embeddings is None:
+            return {"chunks": self.chunks, "embeddings": [], "metadata": self.metadata}
+        return {
+            "chunks": list(self.chunks),
+            "embeddings": embeddings.tolist(),
+            "metadata": list(self.metadata),
+        }
+
+    def load_cached_index(self, chunks: List[str], embeddings: List[List[float]], metadata: List[Dict[str, Any]]) -> None:
+        """
+        Load precomputed chunks/embeddings and rebuild the vector index (no re-embedding).
+        """
+        if not chunks or not embeddings:
+            self.chunks = []
+            self.metadata = []
+            self.index = None
+            if hasattr(self, "embeddings_normalized"):
+                delattr(self, "embeddings_normalized")
+            return
+
+        arr = np.asarray(embeddings, dtype=np.float32)
+        self.chunks = list(chunks)
+        self.metadata = list(metadata) if metadata else [{} for _ in self.chunks]
+        self._last_embeddings = arr
+        self._build_index(arr)
 
     def retrieve(self, query: str, k: int = 5, hadm_id_filter: Optional[int] = None, min_score: float = 0.0) -> List[Dict]:
         """

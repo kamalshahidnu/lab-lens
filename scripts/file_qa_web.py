@@ -548,8 +548,8 @@ def render_google_sign_in() -> None:
       <button id="btnGo">Continue with Google</button>
       <div id="status" class="status"></div>
     </div>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"><\\/script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"><\\/script>
     <script>
       const firebaseConfig = {json.dumps(cfg)};
       const statusEl = document.getElementById('status');
@@ -576,7 +576,7 @@ def render_google_sign_in() -> None:
           setStatus('Sign-in failed. Please try again.');
         }}
       }});
-    </script>
+    <\\/script>
   </body>
 </html>`;
 
@@ -584,6 +584,7 @@ def render_google_sign_in() -> None:
       w.document.open();
       w.document.write(html);
       w.document.close();
+      try {{ w.focus(); }} catch (e) {{}}
       setStatus("Opening Google sign-in…");
     }} catch (e) {{
       console.error(e);

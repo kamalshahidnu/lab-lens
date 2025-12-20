@@ -413,6 +413,83 @@ def firebase_web_config() -> Dict[str, str]:
     return cfg
 
 
+def _get_query_param(name: str) -> Optional[str]:
+    """Query param helper compatible with old/new Streamlit APIs."""
+    try:
+        v = st.query_params.get(name)  # type: ignore[attr-defined]
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v[0] if v else None
+        return str(v)
+    except Exception:
+        qp = st.experimental_get_query_params()
+        arr = qp.get(name)
+        return arr[0] if arr else None
+
+
+def render_google_auth_window(nonce: str) -> None:
+    """
+    Dedicated top-level auth page (opened in a new window).
+    Running on a real origin avoids `about:blank` restrictions.
+    """
+    cfg = firebase_web_config()
+    if not all(cfg.values()):
+        st.error("Firebase web config is missing.")
+        return
+
+    components.html(
+        f"""
+<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 24px; max-width: 520px; margin: 0 auto;">
+  <h2 style="margin: 0 0 12px 0;">Sign in to Lab Lens</h2>
+  <p id="status" style="margin: 0 0 16px 0; color: #444; font-size: 14px;"></p>
+  <button id="btnGo" style="width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #ccc; background: #111; color: #fff; cursor: pointer; font-size: 14px;">
+    Continue with Google
+  </button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script>
+  const firebaseConfig = {json.dumps(cfg)};
+  const nonce = {json.dumps(nonce)};
+  const statusEl = document.getElementById('status');
+  const btn = document.getElementById('btnGo');
+  function setStatus(t) {{ statusEl.textContent = t || ""; }}
+
+  try {{
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  }} catch (e) {{
+    console.error(e);
+  }}
+
+  const auth = firebase.auth();
+  const provider = new firebase.auth.GoogleAuthProvider();
+
+  async function doSignIn() {{
+    try {{
+      setStatus("Opening Google sign-in…");
+      const result = await auth.signInWithPopup(provider);
+      const token = await result.user.getIdToken(true);
+      if (window.opener) {{
+        window.opener.postMessage({{ type: "LL_FIREBASE_TOKEN", token, nonce }}, window.location.origin);
+      }}
+      setStatus("Signed in. You can close this window.");
+      setTimeout(() => window.close(), 300);
+    }} catch (e) {{
+      console.error(e);
+      const code = (e && e.code) ? e.code : "";
+      setStatus("Sign-in failed. " + (code || "Please try again."));
+    }}
+  }}
+
+  btn.addEventListener("click", doSignIn);
+</script>
+""",
+        height=260,
+    )
+
+
 def render_google_sign_in() -> None:
     """
     Renders Firebase Auth (Google provider) sign-in UI.
@@ -504,12 +581,13 @@ def render_google_sign_in() -> None:
     document.getElementById('btnSignOut').style.display = 'none';
   }}
 
-  // Nonce handshake to accept token from the auth popup even if its origin is "null"
-  // (some browsers report about:blank popups with opaque origin).
+  // Nonce handshake to accept token from the auth window.
   const LL_AUTH_NONCE = (self.crypto && self.crypto.randomUUID) ? self.crypto.randomUUID() : String(Math.random());
 
   window.addEventListener('message', (event) => {{
     try {{
+      // Only accept messages from our own origin.
+      if (event.origin !== window.location.origin) return;
       const data = event.data || {{}};
       if (!data || data.type !== 'LL_FIREBASE_TOKEN') return;
       if (!data.nonce || data.nonce !== LL_AUTH_NONCE) return;
@@ -524,76 +602,16 @@ def render_google_sign_in() -> None:
   }});
 
   function openGoogleAuthWindow() {{
-    // Important: do NOT use noopener/noreferrer; we need window.opener for postMessage.
-    const w = window.open("", "lab_lens_auth", "width=520,height=720");
+    const url = new URL(window.location.href);
+    url.searchParams.set('auth_window', '1');
+    url.searchParams.set('nonce', LL_AUTH_NONCE);
+    const w = window.open(url.toString(), "lab_lens_auth", "width=520,height=720");
     if (!w) {{
       setStatus("Popup blocked. Please allow popups for this site and try again.");
       return;
     }}
-
-    const html = `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lab Lens Sign-in</title>
-    <style>
-      body {{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; }}
-      .card {{ max-width: 420px; margin: 0 auto; }}
-      button {{ width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #ccc; background: #111; color: #fff; cursor: pointer; font-size: 14px; }}
-      .status {{ margin-top: 12px; color: #333; font-size: 13px; }}
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h2>Sign in to Lab Lens</h2>
-      <button id="btnGo">Continue with Google</button>
-      <div id="status" class="status"></div>
-    </div>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"><\\/script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"><\\/script>
-    <script>
-      const firebaseConfig = {json.dumps(cfg)};
-      const statusEl = document.getElementById('status');
-      function setStatus(t) {{ statusEl.textContent = t || ''; }}
-      try {{
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-      }} catch (e) {{ console.error(e); }}
-
-      const auth = firebase.auth();
-      const provider = new firebase.auth.GoogleAuthProvider();
-      const nonce = "${{LL_AUTH_NONCE}}";
-
-      document.getElementById('btnGo').addEventListener('click', async () => {{
-        try {{
-          setStatus('Opening Google sign-in…');
-          const result = await auth.signInWithPopup(provider);
-          const token = await result.user.getIdToken(true);
-          if (window.opener) {{
-            window.opener.postMessage({{ type: 'LL_FIREBASE_TOKEN', token, nonce }}, '*');
-          }}
-          setStatus('Signed in. You can close this window.');
-          setTimeout(() => window.close(), 300);
-        }} catch (e) {{
-          console.error(e);
-          const code = (e && e.code) ? e.code : "";
-          setStatus('Sign-in failed. ' + (code || 'Please try again.'));
-        }}
-      }});
-    <\\/script>
-  </body>
-</html>`;
-
-    try {{
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-      try {{ w.focus(); }} catch (e) {{}}
-      setStatus("Opening Google sign-in…");
-    }} catch (e) {{
-      console.error(e);
-      setStatus("Could not open sign-in window. Please try again.");
-    }}
+    try {{ w.focus(); }} catch (e) {{}}
+    setStatus("Opening Google sign-in…");
   }}
 
   // Keep session in sync
@@ -772,6 +790,11 @@ def create_new_chat(uid: Optional[str], store: Optional[FirestoreStore]):
 
 
 def main():
+    # Dedicated auth window route (opened as a normal top-level page, not embedded).
+    if _get_query_param("auth_window") == "1":
+        render_google_auth_window(_get_query_param("nonce") or "")
+        st.stop()
+
     # --- Auth + global session keys ---
     if "firebase_id_token" not in st.session_state:
         st.session_state.firebase_id_token = ""

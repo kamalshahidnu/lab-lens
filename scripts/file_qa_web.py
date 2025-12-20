@@ -504,18 +504,20 @@ def render_google_sign_in() -> None:
     document.getElementById('btnSignOut').style.display = 'none';
   }}
 
-  // Listen for token from the separate auth window
+  // Nonce handshake to accept token from the auth popup even if its origin is "null"
+  // (some browsers report about:blank popups with opaque origin).
+  const LL_AUTH_NONCE = (self.crypto && self.crypto.randomUUID) ? self.crypto.randomUUID() : String(Math.random());
+
   window.addEventListener('message', (event) => {{
     try {{
-      // Only accept messages from our own origin.
-      if (event.origin !== window.location.origin) return;
       const data = event.data || {{}};
-      if (data && data.type === 'LL_FIREBASE_TOKEN' && data.token) {{
-        cacheToken(data.token);
-        setStreamlitToken(data.token);
-        setStatus("Signed in");
-        showSignedInUI();
-      }}
+      if (!data || data.type !== 'LL_FIREBASE_TOKEN') return;
+      if (!data.nonce || data.nonce !== LL_AUTH_NONCE) return;
+      if (!data.token) return;
+      cacheToken(data.token);
+      setStreamlitToken(data.token);
+      setStatus("Signed in");
+      showSignedInUI();
     }} catch (e) {{
       console.error(e);
     }}
@@ -560,6 +562,7 @@ def render_google_sign_in() -> None:
 
       const auth = firebase.auth();
       const provider = new firebase.auth.GoogleAuthProvider();
+      const nonce = "${{LL_AUTH_NONCE}}";
 
       document.getElementById('btnGo').addEventListener('click', async () => {{
         try {{
@@ -567,13 +570,14 @@ def render_google_sign_in() -> None:
           const result = await auth.signInWithPopup(provider);
           const token = await result.user.getIdToken(true);
           if (window.opener) {{
-            window.opener.postMessage({{ type: 'LL_FIREBASE_TOKEN', token }}, window.location.origin);
+            window.opener.postMessage({{ type: 'LL_FIREBASE_TOKEN', token, nonce }}, '*');
           }}
           setStatus('Signed in. You can close this window.');
           setTimeout(() => window.close(), 300);
         }} catch (e) {{
           console.error(e);
-          setStatus('Sign-in failed. Please try again.');
+          const code = (e && e.code) ? e.code : "";
+          setStatus('Sign-in failed. ' + (code || 'Please try again.'));
         }}
       }});
     <\\/script>

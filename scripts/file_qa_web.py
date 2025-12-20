@@ -21,7 +21,15 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.rag.file_qa import FileQA
-from src.auth.firebase import FirebaseUser, verify_firebase_id_token
+from src.auth.firebase import FirebaseUser
+from src.auth.google_oauth import (
+    build_authorize_url,
+    exchange_code_for_tokens,
+    fetch_userinfo,
+    load_google_oauth_config,
+    verify_google_id_token,
+    verify_state,
+)
 from src.storage.firestore_store import FirestoreStore
 from src.storage.gcs_store import GCSStore
 from src.privacy.redaction import redact_sources, redact_text, sanitize_filename
@@ -428,260 +436,40 @@ def _get_query_param(name: str) -> Optional[str]:
         return arr[0] if arr else None
 
 
-def render_google_auth_window(nonce: str) -> None:
-    """
-    Dedicated top-level auth page (opened in a new window).
-    Running on a real origin avoids `about:blank` restrictions.
-    """
-    cfg = firebase_web_config()
-    if not all(cfg.values()):
-        st.error("Firebase web config is missing.")
-        return
-
-    components.html(
-        f"""
-<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 24px; max-width: 520px; margin: 0 auto;">
-  <h2 style="margin: 0 0 12px 0;">Sign in to Lab Lens</h2>
-  <p id="status" style="margin: 0 0 16px 0; color: #444; font-size: 14px;"></p>
-  <button id="btnGo" style="width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #ccc; background: #111; color: #fff; cursor: pointer; font-size: 14px;">
-    Continue with Google
-  </button>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script>
-  const firebaseConfig = {json.dumps(cfg)};
-  const nonce = {json.dumps(nonce)};
-  const statusEl = document.getElementById('status');
-  const btn = document.getElementById('btnGo');
-  function setStatus(t) {{ statusEl.textContent = t || ""; }}
-
-  try {{
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  }} catch (e) {{
-    console.error(e);
-  }}
-
-  const auth = firebase.auth();
-  const provider = new firebase.auth.GoogleAuthProvider();
-
-  async function doSignIn() {{
-    try {{
-      setStatus("Opening Google sign-in…");
-      const result = await auth.signInWithPopup(provider);
-      const token = await result.user.getIdToken(true);
-      if (window.opener) {{
-        window.opener.postMessage({{ type: "LL_FIREBASE_TOKEN", token, nonce }}, window.location.origin);
-      }}
-      setStatus("Signed in. You can close this window.");
-      setTimeout(() => window.close(), 300);
-    }} catch (e) {{
-      console.error(e);
-      const code = (e && e.code) ? e.code : "";
-      setStatus("Sign-in failed. " + (code || "Please try again."));
-    }}
-  }}
-
-  btn.addEventListener("click", doSignIn);
-</script>
-""",
-        height=260,
-    )
-
-
 def render_google_sign_in() -> None:
     """
-    Renders Firebase Auth (Google provider) sign-in UI.
+    Renders reliable Google Sign-in using OAuth redirect (server-side code exchange).
 
-    Uses a hidden Streamlit text input named `firebase_id_token` to pass the Firebase ID token
-    from the browser to the Streamlit Python runtime.
+    This avoids Firebase JS popups, which often fail inside Streamlit's sandboxed iframes on Cloud Run.
     """
-    cfg = firebase_web_config()
-    if not all(cfg.values()):
+    cfg = load_google_oauth_config()
+    if not cfg:
         st.error(
-            "Firebase web config is missing. Set FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_APP_ID."
+            "Google Sign-in is not configured. Set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REDIRECT_URI."
         )
         return
 
-    # Hidden input to receive token from JS
-    st.text_input("firebase_id_token", key="firebase_id_token", label_visibility="collapsed")
-
-    # Hide the input visually (keep it in DOM)
-    st.markdown(
-        """
-<style>
-  div[data-testid="stTextInput"] label:has(+ div input[aria-label="firebase_id_token"]) {display:none;}
-  div[data-testid="stTextInput"] div:has(input[aria-label="firebase_id_token"]) {display:none;}
-</style>
-""",
-        unsafe_allow_html=True,
-    )
-
-    components.html(
-        f"""
-<div style="display:flex; flex-direction:column; gap:0.75rem;">
-  <div id="authStatus" style="color:#ececec; font-size:0.9rem;"></div>
-  <div style="display:flex; gap:0.5rem;">
-    <button id="btnOpenGoogle" style="padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:#343541; color:#fff; cursor:pointer; width:100%;">
-      Sign in with Google
-    </button>
-    <button id="btnSignOut" style="padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:transparent; color:#fff; cursor:pointer; display:none;">
-      Sign out
-    </button>
+    auth_url = build_authorize_url(cfg)
+    # Streamlit version compatibility: link_button was added later than some 1.x releases.
+    if hasattr(st, "link_button"):
+        st.link_button("Sign in with Google", auth_url, use_container_width=True, type="primary")  # type: ignore[attr-defined]
+    else:
+        st.markdown(
+            f"""
+<a href="{auth_url}" target="_self" style="text-decoration:none;">
+  <div style="width:100%; text-align:center; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid #565869; background:#343541; color:#fff;">
+    Sign in with Google
   </div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script>
-  const firebaseConfig = {json.dumps(cfg)};
-  try {{
-    if (!firebase.apps.length) {{
-      firebase.initializeApp(firebaseConfig);
-    }}
-  }} catch (e) {{
-    console.error("Firebase init error", e);
-  }}
-
-  function setStreamlitToken(token) {{
-    try {{
-      const doc = window.parent.document;
-      const input = doc.querySelector('input[aria-label="firebase_id_token"]');
-      if (!input) return;
-      input.value = token || "";
-      input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-    }} catch (e) {{
-      console.error("Failed to set Streamlit token", e);
-    }}
-  }}
-
-  function cacheToken(token) {{
-    try {{ localStorage.setItem("lab_lens_firebase_id_token", token); }} catch (e) {{}}
-    try {{ sessionStorage.setItem("lab_lens_firebase_id_token", token); }} catch (e) {{}}
-  }}
-
-  function setStatus(text) {{
-    const el = document.getElementById('authStatus');
-    if (el) el.textContent = text || "";
-  }}
-
-  function showSignedInUI() {{
-    document.getElementById('btnSignOut').style.display = 'inline-block';
-  }}
-
-  async function signOut() {{
-    try {{
-      await firebase.auth().signOut();
-    }} catch (e) {{}}
-    try {{ localStorage.removeItem("lab_lens_firebase_id_token"); }} catch (e) {{}}
-    try {{ sessionStorage.removeItem("lab_lens_firebase_id_token"); }} catch (e) {{}}
-    setStreamlitToken("");
-    setStatus("Signed out");
-    document.getElementById('btnSignOut').style.display = 'none';
-  }}
-
-  // Nonce handshake to accept token from the auth window.
-  const LL_AUTH_NONCE = (self.crypto && self.crypto.randomUUID) ? self.crypto.randomUUID() : String(Math.random());
-
-  window.addEventListener('message', (event) => {{
-    try {{
-      // Only accept messages from our own origin.
-      // Note: Streamlit components run inside an `about:srcdoc` iframe, so `window.location.origin`
-      // may be "null". Use the parent page origin as the expected origin when available.
-      let expectedOrigin = null;
-      try {{
-        expectedOrigin = window.parent.location.origin;
-      }} catch (e) {{}}
-      if (expectedOrigin && event.origin !== expectedOrigin) return;
-      const data = event.data || {{}};
-      if (!data || data.type !== 'LL_FIREBASE_TOKEN') return;
-      if (!data.nonce || data.nonce !== LL_AUTH_NONCE) return;
-      if (!data.token) return;
-      cacheToken(data.token);
-      setStreamlitToken(data.token);
-      setStatus("Signed in");
-      showSignedInUI();
-    }} catch (e) {{
-      console.error(e);
-    }}
-  }});
-
-  function openGoogleAuthWindow() {{
-    // IMPORTANT: build the auth URL from the parent page, not the component iframe
-    // (the iframe URL is `about:srcdoc`, which is not a real navigable URL).
-    let baseHref = null;
-    try {{
-      baseHref = window.parent.location.href;
-    }} catch (e) {{}}
-    if (!baseHref) {{
-      // As a fallback, try the referrer (usually the parent page URL).
-      baseHref = document.referrer || "";
-    }}
-    if (!baseHref) {{
-      setStatus("Could not determine app URL for sign-in. Please refresh and try again.");
-      return;
-    }}
-    const url = new URL(baseHref);
-    url.searchParams.set('auth_window', '1');
-    url.searchParams.set('nonce', LL_AUTH_NONCE);
-    const w = window.open(url.toString(), "lab_lens_auth", "width=520,height=720");
-    if (!w) {{
-      setStatus("Popup blocked. Please allow popups for this site and try again.");
-      return;
-    }}
-    try {{ w.focus(); }} catch (e) {{}}
-    setStatus("Opening Google sign-in…");
-  }}
-
-  // Keep session in sync
-  firebase.auth().onAuthStateChanged(async (user) => {{
-    if (user) {{
-      try {{
-        const token = await user.getIdToken(false);
-        cacheToken(token);
-        setStreamlitToken(token);
-        setStatus("Signed in");
-        showSignedInUI();
-      }} catch (e) {{
-        console.error(e);
-      }}
-    }} else {{
-      setStatus("Not signed in");
-    }}
-  }});
-
-  document.getElementById('btnOpenGoogle').addEventListener('click', openGoogleAuthWindow);
-  document.getElementById('btnSignOut').addEventListener('click', () => signOut().catch(console.error));
-</script>
+</a>
 """,
-        height=120,
-    )
+            unsafe_allow_html=True,
+        )
 
 
 def ensure_user() -> Optional[FirebaseUser]:
-    """
-    Ensure st.session_state.user is set based on the firebase_id_token.
-    """
-    token = (st.session_state.get("firebase_id_token") or "").strip()
+    """Return currently signed-in user (set during OAuth callback)."""
     user = st.session_state.get("user")
-    if user:
-        return user
-    if not token:
-        return None
-    try:
-        fb_user = verify_firebase_id_token(token)
-        st.session_state.user = fb_user
-        # Upsert user profile
-        try:
-            get_firestore_store().upsert_user(fb_user.uid, fb_user.email, fb_user.name, fb_user.picture)
-        except Exception as e:
-            logger.warning(f"Failed to upsert user profile: {e}")
-        return fb_user
-    except Exception as e:
-        st.session_state.pop("user", None)
-        st.session_state["auth_error"] = str(e)
-        return None
+    return user if user else None
 
 
 def initialize_qa_system(
@@ -810,14 +598,7 @@ def create_new_chat(uid: Optional[str], store: Optional[FirestoreStore]):
 
 
 def main():
-    # Dedicated auth window route (opened as a normal top-level page, not embedded).
-    if _get_query_param("auth_window") == "1":
-        render_google_auth_window(_get_query_param("nonce") or "")
-        st.stop()
-
     # --- Auth + global session keys ---
-    if "firebase_id_token" not in st.session_state:
-        st.session_state.firebase_id_token = ""
     if "user" not in st.session_state:
         st.session_state.user = None
     if "auth_error" not in st.session_state:
@@ -853,6 +634,66 @@ def main():
         st.session_state.local_files_by_chat = {}
     if "local_docs_loaded_by_chat" not in st.session_state:
         st.session_state.local_docs_loaded_by_chat = {}
+
+    # --- OAuth callback handling ---
+    # If Google redirects back with ?code=...&state=..., complete the sign-in server-side.
+    oauth_code = _get_query_param("code")
+    oauth_state = _get_query_param("state")
+    if oauth_code and oauth_state and not st.session_state.get("user"):
+        cfg = load_google_oauth_config()
+        if not cfg:
+            st.session_state["auth_error"] = (
+                "Google Sign-in is not configured. Set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REDIRECT_URI."
+            )
+        else:
+            payload = verify_state(oauth_state, cfg.client_secret)
+            if not payload:
+                st.session_state["auth_error"] = "Sign-in failed (invalid state). Please try again."
+            else:
+                try:
+                    tokens = exchange_code_for_tokens(cfg, oauth_code)
+                    idt = (tokens.get("id_token") or "").strip()
+                    at = (tokens.get("access_token") or "").strip()
+                    claims = verify_google_id_token(idt, client_id=cfg.client_id)
+
+                    # Prefer userinfo for profile fields; fall back to id_token claims.
+                    profile: Dict[str, Any] = {}
+                    if at:
+                        try:
+                            profile = fetch_userinfo(at)
+                        except Exception as e:
+                            logger.warning(f"Failed to fetch Google userinfo: {e}")
+
+                    uid = f"google:{claims.get('sub')}"
+                    email = profile.get("email") or claims.get("email")
+                    name = profile.get("name") or claims.get("name")
+                    picture = profile.get("picture") or claims.get("picture")
+
+                    fb_user = FirebaseUser(
+                        uid=str(uid),
+                        email=str(email) if email else None,
+                        name=str(name) if name else None,
+                        picture=str(picture) if picture else None,
+                    )
+                    st.session_state.user = fb_user
+                    st.session_state.auth_error = None
+
+                    # Upsert user profile
+                    try:
+                        get_firestore_store().upsert_user(fb_user.uid, fb_user.email, fb_user.name, fb_user.picture)
+                    except Exception as e:
+                        logger.warning(f"Failed to upsert user profile: {e}")
+
+                except Exception as e:
+                    logger.warning(f"OAuth sign-in failed: {e}", exc_info=True)
+                    st.session_state["auth_error"] = "Sign-in failed. Please try again."
+
+        # Clear auth params from URL to avoid reprocessing.
+        try:
+            st.query_params.clear()  # type: ignore[attr-defined]
+        except Exception:
+            st.experimental_set_query_params()
+        st.rerun()
 
     fb_user = ensure_user()
     store = get_firestore_store() if fb_user else None
@@ -962,6 +803,10 @@ def main():
             st.markdown(f"**{fb_user.name or fb_user.email or fb_user.uid}**")
             if fb_user.email:
                 st.caption(fb_user.email)
+            if st.button("Sign out", use_container_width=True):
+                st.session_state.user = None
+                st.session_state.auth_error = None
+                st.rerun()
 
         # Sign-in options at bottom (no persistence unless user signs in)
         if not fb_user:

@@ -587,7 +587,13 @@ def render_google_sign_in() -> None:
   window.addEventListener('message', (event) => {{
     try {{
       // Only accept messages from our own origin.
-      if (event.origin !== window.location.origin) return;
+      // Note: Streamlit components run inside an `about:srcdoc` iframe, so `window.location.origin`
+      // may be "null". Use the parent page origin as the expected origin when available.
+      let expectedOrigin = null;
+      try {{
+        expectedOrigin = window.parent.location.origin;
+      }} catch (e) {{}}
+      if (expectedOrigin && event.origin !== expectedOrigin) return;
       const data = event.data || {{}};
       if (!data || data.type !== 'LL_FIREBASE_TOKEN') return;
       if (!data.nonce || data.nonce !== LL_AUTH_NONCE) return;
@@ -602,7 +608,21 @@ def render_google_sign_in() -> None:
   }});
 
   function openGoogleAuthWindow() {{
-    const url = new URL(window.location.href);
+    // IMPORTANT: build the auth URL from the parent page, not the component iframe
+    // (the iframe URL is `about:srcdoc`, which is not a real navigable URL).
+    let baseHref = null;
+    try {{
+      baseHref = window.parent.location.href;
+    }} catch (e) {{}}
+    if (!baseHref) {{
+      // As a fallback, try the referrer (usually the parent page URL).
+      baseHref = document.referrer || "";
+    }}
+    if (!baseHref) {{
+      setStatus("Could not determine app URL for sign-in. Please refresh and try again.");
+      return;
+    }}
+    const url = new URL(baseHref);
     url.searchParams.set('auth_window', '1');
     url.searchParams.set('nonce', LL_AUTH_NONCE);
     const w = window.open(url.toString(), "lab_lens_auth", "width=520,height=720");

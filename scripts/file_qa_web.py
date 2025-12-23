@@ -984,6 +984,7 @@ def main():
           <ol style="color: #b4b4b4; margin: 0; padding-left: 1rem; font-size: 0.85rem; line-height: 1.6;">
             <li>Click <strong style="color: #10a37f;">➕</strong> below</li>
             <li>Upload your lab report</li>
+            <li>Click <strong>Load documents</strong></li>
             <li>Ask questions!</li>
           </ol>
         </div>

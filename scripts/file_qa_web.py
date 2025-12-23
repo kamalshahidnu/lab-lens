@@ -706,8 +706,18 @@ def main():
     # --- Load chats + current chat selection ---
     uid: Optional[str] = fb_user.uid if fb_user else None
     if uid and store:
-        chats = store.list_chats(uid)
-        chat_ids = {c["chat_id"] for c in chats}
+        try:
+            chats = store.list_chats(uid)
+            chat_ids = {c["chat_id"] for c in chats}
+            st.session_state.pop("firestore_error", None)
+        except Exception as e:
+            # Most common cause on a fresh GCP project: Firestore API not enabled / DB not created.
+            # Fall back to local (non-persistent) chats so the app stays usable.
+            logger.warning(f"Firestore unavailable; falling back to local session: {e}")
+            st.session_state["firestore_error"] = str(e)
+            store = None
+            chats = st.session_state.local_chats
+            chat_ids = {c.get("chat_id") for c in chats if c.get("chat_id")}
     else:
         chats = st.session_state.local_chats
         chat_ids = {c.get("chat_id") for c in chats if c.get("chat_id")}
@@ -803,6 +813,11 @@ def main():
             st.markdown(f"**{fb_user.name or fb_user.email or fb_user.uid}**")
             if fb_user.email:
                 st.caption(fb_user.email)
+            if st.session_state.get("firestore_error"):
+                st.warning(
+                    "Signed in, but chat persistence is temporarily unavailable because Firestore isn't enabled or "
+                    "the service lacks permission. Enable Cloud Firestore in your GCP project and refresh."
+                )
             if st.button("Sign out", use_container_width=True):
                 st.session_state.user = None
                 st.session_state.auth_error = None

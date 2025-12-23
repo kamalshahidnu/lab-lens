@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -700,6 +701,8 @@ def main():
         st.session_state.persist_session_token = ""
     if "clear_session_token" not in st.session_state:
         st.session_state.clear_session_token = False
+    if "sid" not in st.session_state:
+        st.session_state.sid = ""
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "documents_loaded" not in st.session_state:
@@ -827,6 +830,25 @@ def main():
                     st.session_state.auth_session_token = session_token
                     st.session_state.persist_session_token = session_token
 
+                    # Additionally persist a stable session id in the URL + Firestore so refresh works
+                    # even if browser storage is blocked by Streamlit iframe sandboxing.
+                    try:
+                        sid = _get_query_param("sid") or st.session_state.get("sid") or str(uuid4())
+                        exp = int(time.time()) + (30 * 24 * 60 * 60)
+                        get_firestore_store().upsert_session(
+                            sid,
+                            {
+                                "uid": fb_user.uid,
+                                "email": fb_user.email,
+                                "name": fb_user.name,
+                                "picture": fb_user.picture,
+                            },
+                            exp,
+                        )
+                        st.session_state.sid = sid
+                    except Exception as e:
+                        logger.warning(f"Failed to persist session id: {e}")
+
                     # Upsert user profile
                     try:
                         get_firestore_store().upsert_user(fb_user.uid, fb_user.email, fb_user.name, fb_user.picture)
@@ -837,14 +859,43 @@ def main():
                     logger.warning(f"OAuth sign-in failed: {e}", exc_info=True)
                     st.session_state["auth_error"] = "Sign-in failed. Please try again."
 
-        # Clear auth params from URL to avoid reprocessing.
+        # Clear auth params from URL to avoid reprocessing, but keep `sid` if we set it.
         try:
+            sid = _get_query_param("sid") or st.session_state.get("sid") or ""
             st.query_params.clear()  # type: ignore[attr-defined]
+            if sid:
+                st.query_params["sid"] = sid  # type: ignore[index]
         except Exception:
-            st.experimental_set_query_params()
+            sid = _get_query_param("sid") or st.session_state.get("sid") or ""
+            if sid:
+                st.experimental_set_query_params(sid=sid)
+            else:
+                st.experimental_set_query_params()
         st.rerun()
 
+    # Restore user from Firestore-backed sid if present (survives refresh).
+    if not st.session_state.get("user"):
+        sid = _get_query_param("sid") or ""
+        if sid:
+            try:
+                sess = get_firestore_store().get_session(sid)
+                if sess and int(sess.get("exp", 0)) > int(time.time()):
+                    u = (sess.get("user") or {}) if isinstance(sess.get("user"), dict) else {}
+                    restored = FirebaseUser(
+                        uid=str(u.get("uid") or ""),
+                        email=str(u.get("email")) if u.get("email") else None,
+                        name=str(u.get("name")) if u.get("name") else None,
+                        picture=str(u.get("picture")) if u.get("picture") else None,
+                    )
+                    if restored.uid:
+                        st.session_state.user = restored
+                        st.session_state.sid = sid
+            except Exception as e:
+                logger.warning(f"Failed to restore session from Firestore: {e}")
+
     fb_user = ensure_user()
+    if not fb_user:
+        fb_user = st.session_state.get("user")
     store = get_firestore_store() if fb_user else None
 
     # --- Sidebar: auth gate ---
@@ -968,9 +1019,21 @@ def main():
                     "the service lacks permission. Enable Cloud Firestore in your GCP project and refresh."
                 )
             if st.button("Sign out", use_container_width=True):
+                # Clear URL session id + Firestore session mapping (best-effort).
+                try:
+                    sid = _get_query_param("sid") or st.session_state.get("sid") or ""
+                    if sid:
+                        get_firestore_store().delete_session(sid)
+                except Exception as e:
+                    logger.warning(f"Failed to delete session: {e}")
+                try:
+                    st.query_params.pop("sid", None)  # type: ignore[attr-defined]
+                except Exception:
+                    st.experimental_set_query_params()
                 st.session_state.user = None
                 st.session_state.auth_error = None
                 st.session_state.clear_session_token = True
+                st.session_state.sid = ""
                 st.rerun()
 
         # Sign-in options at bottom (no persistence unless user signs in)

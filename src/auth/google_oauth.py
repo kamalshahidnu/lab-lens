@@ -50,6 +50,41 @@ def _sign_state(payload: Dict[str, Any], secret: str) -> str:
     return f"{_b64url(body)}.{_b64url(sig)}"
 
 
+def build_session_token(
+    user_payload: Dict[str, Any],
+    secret: str,
+    *,
+    ttl_seconds: int = 30 * 24 * 60 * 60,
+) -> str:
+    """
+    Create a signed, time-limited session token for browser persistence.
+
+    Stored client-side (localStorage) and verified server-side on each new Streamlit session.
+    """
+    now = int(time.time())
+    payload = dict(user_payload)
+    payload["iat"] = now
+    payload["exp"] = now + int(ttl_seconds)
+    return _sign_state(payload, secret)
+
+
+def verify_session_token(token: str, secret: str) -> Optional[Dict[str, Any]]:
+    try:
+        body_b64, sig_b64 = token.split(".", 1)
+        body = _b64url_decode(body_b64)
+        sig = _b64url_decode(sig_b64)
+        expected = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).digest()
+        if not hmac.compare_digest(sig, expected):
+            return None
+        payload = json.loads(body.decode("utf-8"))
+        exp = int(payload.get("exp", 0))
+        if exp <= 0 or int(time.time()) > exp:
+            return None
+        return payload
+    except Exception:
+        return None
+
+
 def verify_state(state: str, secret: str, *, max_age_seconds: int = 10 * 60) -> Optional[Dict[str, Any]]:
     try:
         body_b64, sig_b64 = state.split(".", 1)

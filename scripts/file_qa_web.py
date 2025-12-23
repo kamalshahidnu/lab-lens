@@ -23,11 +23,13 @@ sys.path.insert(0, str(project_root))
 from src.rag.file_qa import FileQA
 from src.auth.firebase import FirebaseUser
 from src.auth.google_oauth import (
+    build_session_token,
     build_authorize_url,
     exchange_code_for_tokens,
     fetch_userinfo,
     load_google_oauth_config,
     verify_google_id_token,
+    verify_session_token,
     verify_state,
 )
 from src.storage.firestore_store import FirestoreStore
@@ -436,6 +438,45 @@ def _get_query_param(name: str) -> Optional[str]:
         return arr[0] if arr else None
 
 
+def render_auth_session_bridge() -> None:
+    """
+    Bridge browser storage -> Streamlit session_state via a hidden text input.
+
+    Streamlit sessions reset on full page refresh; this restores login state from localStorage.
+    """
+    st.text_input("auth_session_token", key="auth_session_token", label_visibility="collapsed")
+    st.markdown(
+        """
+<style>
+  div[data-testid="stTextInput"] label:has(+ div input[aria-label="auth_session_token"]) {display:none;}
+  div[data-testid="stTextInput"] div:has(input[aria-label="auth_session_token"]) {display:none;}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+
+    components.html(
+        """
+<script>
+  (function () {
+    try {
+      const token = localStorage.getItem("lab_lens_auth_session") || "";
+      const doc = window.parent.document;
+      const input = doc.querySelector('input[aria-label="auth_session_token"]');
+      if (!input) return;
+      if ((input.value || "") === token) return;
+      input.value = token;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    } catch (e) {
+      // ignore
+    }
+  })();
+</script>
+""",
+        height=0,
+    )
+
+
 def render_google_sign_in() -> None:
     """
     Renders reliable Google Sign-in using OAuth redirect (server-side code exchange).
@@ -467,9 +508,34 @@ def render_google_sign_in() -> None:
 
 
 def ensure_user() -> Optional[FirebaseUser]:
-    """Return currently signed-in user (set during OAuth callback)."""
+    """Return currently signed-in user (restored from localStorage-backed session token)."""
     user = st.session_state.get("user")
-    return user if user else None
+    if user:
+        return user
+
+    token = (st.session_state.get("auth_session_token") or "").strip()
+    if not token:
+        return None
+
+    cfg = load_google_oauth_config()
+    if not cfg:
+        return None
+
+    payload = verify_session_token(token, cfg.client_secret)
+    if not payload:
+        return None
+
+    fb_user = FirebaseUser(
+        uid=str(payload.get("uid") or ""),
+        email=str(payload.get("email")) if payload.get("email") else None,
+        name=str(payload.get("name")) if payload.get("name") else None,
+        picture=str(payload.get("picture")) if payload.get("picture") else None,
+    )
+    if not fb_user.uid:
+        return None
+
+    st.session_state.user = fb_user
+    return fb_user
 
 
 def initialize_qa_system(
@@ -603,6 +669,12 @@ def main():
         st.session_state.user = None
     if "auth_error" not in st.session_state:
         st.session_state.auth_error = None
+    if "auth_session_token" not in st.session_state:
+        st.session_state.auth_session_token = ""
+    if "persist_session_token" not in st.session_state:
+        st.session_state.persist_session_token = ""
+    if "clear_session_token" not in st.session_state:
+        st.session_state.clear_session_token = False
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "documents_loaded" not in st.session_state:
@@ -634,6 +706,34 @@ def main():
         st.session_state.local_files_by_chat = {}
     if "local_docs_loaded_by_chat" not in st.session_state:
         st.session_state.local_docs_loaded_by_chat = {}
+
+    # Keep a small bridge running so localStorage -> session_state works after refresh.
+    render_auth_session_bridge()
+
+    # If we need to persist/clear the session token in the browser, do it here.
+    if st.session_state.get("clear_session_token"):
+        components.html(
+            """
+<script>
+  try { localStorage.removeItem("lab_lens_auth_session"); } catch (e) {}
+</script>
+""",
+            height=0,
+        )
+        st.session_state.clear_session_token = False
+        st.session_state.auth_session_token = ""
+
+    if st.session_state.get("persist_session_token"):
+        token_to_persist = st.session_state.persist_session_token
+        components.html(
+            f"""
+<script>
+  try {{ localStorage.setItem("lab_lens_auth_session", {json.dumps(token_to_persist)}); }} catch (e) {{}}
+</script>
+""",
+            height=0,
+        )
+        st.session_state.persist_session_token = ""
 
     # --- OAuth callback handling ---
     # If Google redirects back with ?code=...&state=..., complete the sign-in server-side.
@@ -677,6 +777,18 @@ def main():
                     )
                     st.session_state.user = fb_user
                     st.session_state.auth_error = None
+                    # Persist a signed session token for refresh survival.
+                    session_token = build_session_token(
+                        {
+                            "uid": fb_user.uid,
+                            "email": fb_user.email,
+                            "name": fb_user.name,
+                            "picture": fb_user.picture,
+                        },
+                        cfg.client_secret,
+                    )
+                    st.session_state.auth_session_token = session_token
+                    st.session_state.persist_session_token = session_token
 
                     # Upsert user profile
                     try:
@@ -821,6 +933,7 @@ def main():
             if st.button("Sign out", use_container_width=True):
                 st.session_state.user = None
                 st.session_state.auth_error = None
+                st.session_state.clear_session_token = True
                 st.rerun()
 
         # Sign-in options at bottom (no persistence unless user signs in)

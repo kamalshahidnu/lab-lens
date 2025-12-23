@@ -459,17 +459,42 @@ def render_auth_session_bridge() -> None:
         """
 <script>
   (function () {
-    try {
-      const token = localStorage.getItem("lab_lens_auth_session") || "";
-      const doc = window.parent.document;
-      const input = doc.querySelector('input[aria-label="auth_session_token"]');
-      if (!input) return;
-      if ((input.value || "") === token) return;
-      input.value = token;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    } catch (e) {
-      // ignore
+    function readToken() {
+      try {
+        if (window.top && window.top.localStorage) {
+          return window.top.localStorage.getItem("lab_lens_auth_session") || "";
+        }
+      } catch (e) {}
+      try {
+        return localStorage.getItem("lab_lens_auth_session") || "";
+      } catch (e) {}
+      return "";
     }
+
+    function setStreamlitWidgetValue(token) {
+      try {
+        const doc = window.parent && window.parent.document ? window.parent.document : document;
+        const input = doc.querySelector('input[aria-label="auth_session_token"]');
+        if (!input) return false;
+        if ((input.value || "") === (token || "")) return true;
+        input.value = token || "";
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // Widget can be missing on first paint; retry briefly.
+    const token = readToken();
+    let tries = 0;
+    const maxTries = 50; // ~10s at 200ms
+    const timer = setInterval(function () {
+      tries += 1;
+      const ok = setStreamlitWidgetValue(token);
+      if (ok || tries >= maxTries) clearInterval(timer);
+    }, 200);
   })();
 </script>
 """,
@@ -715,7 +740,13 @@ def main():
         components.html(
             """
 <script>
-  try { localStorage.removeItem("lab_lens_auth_session"); } catch (e) {}
+  try {
+    if (window.top && window.top.localStorage) {
+      window.top.localStorage.removeItem("lab_lens_auth_session");
+    } else {
+      localStorage.removeItem("lab_lens_auth_session");
+    }
+  } catch (e) {}
 </script>
 """,
             height=0,
@@ -728,7 +759,13 @@ def main():
         components.html(
             f"""
 <script>
-  try {{ localStorage.setItem("lab_lens_auth_session", {json.dumps(token_to_persist)}); }} catch (e) {{}}
+  try {{
+    if (window.top && window.top.localStorage) {{
+      window.top.localStorage.setItem("lab_lens_auth_session", {json.dumps(token_to_persist)});
+    }} else {{
+      localStorage.setItem("lab_lens_auth_session", {json.dumps(token_to_persist)});
+    }}
+  }} catch (e) {{}}
 </script>
 """,
             height=0,

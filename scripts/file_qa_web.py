@@ -40,6 +40,50 @@ from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
+
+def _firestore_safe(value: Any) -> Any:
+    """
+    Best-effort conversion of nested objects into Firestore-serializable primitives.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (str, bool, int, float)):
+        return value
+    # numpy / torch scalars sometimes appear in scores
+    try:
+        if hasattr(value, "item") and callable(value.item):  # type: ignore[attr-defined]
+            return _firestore_safe(value.item())
+    except Exception:
+        pass
+    if isinstance(value, dict):
+        return {str(k): _firestore_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_firestore_safe(v) for v in value]
+    # Fallback: stringify unknown objects
+    return str(value)
+
+
+def _truncate_sources_for_firestore(sources: Any, *, max_sources: int = 3, max_chunk_chars: int = 1200) -> list[dict]:
+    """
+    Reduce size + ensure types are Firestore-friendly.
+    """
+    if not isinstance(sources, list):
+        return []
+    out: list[dict] = []
+    for s in sources[:max_sources]:
+        if not isinstance(s, dict):
+            continue
+        safe = _firestore_safe(s)
+        if not isinstance(safe, dict):
+            continue
+        # Avoid huge payloads (Firestore doc limit is 1MB)
+        chunk = safe.get("chunk")
+        if isinstance(chunk, str) and len(chunk) > max_chunk_chars:
+            safe["chunk"] = chunk[:max_chunk_chars] + "…"
+        out.append(safe)
+    return out
+
+
 # Page configuration
 st.set_page_config(
     page_title="Lab Lens - File Q&A",
@@ -1492,15 +1536,27 @@ def main():
                     )
                     if uid and store:
                         try:
+                            safe_sources = _truncate_sources_for_firestore(to_store_sources)
                             store.add_message(
                                 uid,
                                 current_chat_id,
                                 role="assistant",
                                 content=to_store_answer,
-                                sources=to_store_sources,
+                                sources=safe_sources,
                             )
                         except Exception as e:
-                            logger.warning(f"Failed to persist assistant message: {e}")
+                            # If sources cause serialization/size issues, persist the answer without sources.
+                            logger.warning(f"Failed to persist assistant message with sources: {e}")
+                            try:
+                                store.add_message(
+                                    uid,
+                                    current_chat_id,
+                                    role="assistant",
+                                    content=to_store_answer,
+                                    sources=[],
+                                )
+                            except Exception as e2:
+                                logger.warning(f"Failed to persist assistant message (no sources): {e2}")
                     else:
                         st.session_state.local_messages_by_chat[current_chat_id] = list(st.session_state.messages)
                         for c in st.session_state.local_chats:

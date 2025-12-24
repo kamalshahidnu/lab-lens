@@ -6,12 +6,15 @@ Modern chat interface for document Q&A using Streamlit
 
 import json
 import os
+import smtplib
 import sys
 import tempfile
 import time
+from email.message import EmailMessage
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
+from urllib.parse import quote as url_quote
 from uuid import uuid4
 
 import streamlit as st
@@ -504,6 +507,71 @@ def _clear_query_params() -> None:
         st.query_params.clear()  # type: ignore[attr-defined]
         return
     st.experimental_set_query_params()
+
+
+def _get_support_email_to() -> str:
+    """
+    Destination inbox for Contact Us submissions.
+
+    Configure in Cloud Run env:
+      - SUPPORT_EMAIL_TO (preferred) or SUPPORT_EMAIL
+    """
+    return (os.getenv("SUPPORT_EMAIL_TO") or os.getenv("SUPPORT_EMAIL") or "").strip()
+
+
+def _build_mailto_link(*, to_email: str, subject: str, body: str) -> str:
+    to_email = (to_email or "").strip()
+    subj = url_quote(subject or "")
+    bod = url_quote(body or "")
+    return f"mailto:{to_email}?subject={subj}&body={bod}"
+
+
+def _smtp_configured() -> bool:
+    host = (os.getenv("SMTP_HOST") or "").strip()
+    user = (os.getenv("SMTP_USER") or "").strip()
+    pwd = (os.getenv("SMTP_PASSWORD") or "").strip()
+    to_email = _get_support_email_to()
+    return bool(host and user and pwd and to_email)
+
+
+def _send_support_email(*, subject: str, body: str, reply_to: Optional[str] = None) -> None:
+    """
+    Send an email via SMTP. Requires env vars:
+      - SMTP_HOST, SMTP_PORT (optional; default 587), SMTP_USER, SMTP_PASSWORD
+      - SUPPORT_EMAIL_TO (recipient)
+      - SUPPORT_EMAIL_FROM (optional; default SMTP_USER)
+      - SMTP_USE_TLS (optional; default true)
+    """
+    host = (os.getenv("SMTP_HOST") or "").strip()
+    port = int((os.getenv("SMTP_PORT") or "587").strip())
+    user = (os.getenv("SMTP_USER") or "").strip()
+    pwd = (os.getenv("SMTP_PASSWORD") or "").strip()
+    use_tls = (os.getenv("SMTP_USE_TLS") or "true").strip().lower() not in {"0", "false", "no"}
+    to_email = _get_support_email_to()
+    from_email = (os.getenv("SUPPORT_EMAIL_FROM") or user).strip()
+
+    if not (host and user and pwd and to_email and from_email):
+        raise RuntimeError("SMTP is not fully configured (missing host/user/password/to/from).")
+
+    msg = EmailMessage()
+    msg["To"] = to_email
+    msg["From"] = from_email
+    msg["Subject"] = subject
+    if reply_to:
+        msg["Reply-To"] = reply_to
+    msg.set_content(body)
+
+    if port == 465:
+        with smtplib.SMTP_SSL(host, port, timeout=20) as server:
+            server.login(user, pwd)
+            server.send_message(msg)
+        return
+
+    with smtplib.SMTP(host, port, timeout=20) as server:
+        if use_tls:
+            server.starttls()
+        server.login(user, pwd)
+        server.send_message(msg)
 
 
 def render_auth_session_bridge() -> None:
@@ -1153,6 +1221,99 @@ def main():
             render_google_sign_in()
             if st.session_state.get("auth_error"):
                 st.error(f"Authentication error: {st.session_state['auth_error']}")
+
+        # Contact / Support
+        st.markdown("---")
+        with st.expander("📩 Contact us / Report an issue", expanded=False):
+            st.caption(
+                "Send feedback or report issues. Please **do not include sensitive medical info (PHI)** in messages."
+            )
+
+            support_to = _get_support_email_to()
+            identity = ""
+            if fb_user:
+                identity = fb_user.email or fb_user.name or fb_user.uid
+
+            mailto_subject = "Lab Lens — Support / Feedback"
+            mailto_body = (
+                "Hi Lab Lens team,\n\n"
+                "I want to report an issue / share feedback:\n\n"
+                "Message:\n"
+                "- \n\n"
+                "Optional context:\n"
+                f"- User: {identity}\n"
+                f"- Time (UTC): {datetime.utcnow().isoformat()}Z\n"
+            )
+
+            if support_to:
+                mailto_link = _build_mailto_link(to_email=support_to, subject=mailto_subject, body=mailto_body)
+                if hasattr(st, "link_button"):
+                    st.link_button("Email the developers", mailto_link, use_container_width=True)  # type: ignore[attr-defined]
+                else:
+                    st.markdown(f"[Email the developers]({mailto_link})")
+            else:
+                st.info("Developer contact email is not configured for this deployment.")
+
+            st.markdown("**Or send a message here (delivered to our email):**")
+            with st.form("contact_support_form", clear_on_submit=True):
+                default_reply = (fb_user.email if fb_user and fb_user.email else "").strip()
+                name = st.text_input("Your name (optional)")
+                reply_email = st.text_input("Your email (optional)", value=default_reply, placeholder="you@example.com")
+                subject = st.text_input("Subject", value="Support request")
+                message = st.text_area("Message", height=140, placeholder="Describe the issue or feedback…")
+                include_diag = st.checkbox("Include basic diagnostics (recommended)", value=True)
+                submitted = st.form_submit_button("Send message", use_container_width=True, type="primary")
+
+            if submitted:
+                now = time.time()
+                last = float(st.session_state.get("last_support_submit_ts", 0) or 0)
+                if now - last < 30:
+                    st.warning("Please wait a bit before sending another message.")
+                elif not message or len(message.strip()) < 10:
+                    st.error("Please enter a message (at least 10 characters).")
+                else:
+                    st.session_state.last_support_submit_ts = now
+
+                    safe_subject = (subject or "Support request").strip()[:140]
+                    safe_reply = (reply_email or "").strip()[:254]
+                    safe_name = (name or "").strip()[:120]
+                    safe_msg = (message or "").strip()[:8000]
+
+                    email_subject = f"[Lab Lens] {safe_subject}"
+                    lines = [
+                        "New Lab Lens contact message",
+                        "",
+                        f"From name: {safe_name}",
+                        f"Reply email: {safe_reply}",
+                        f"Signed-in user: {identity}",
+                        f"Time (UTC): {datetime.utcnow().isoformat()}Z",
+                        "",
+                        "Message:",
+                        safe_msg,
+                    ]
+                    if include_diag:
+                        lines += [
+                            "",
+                            "Diagnostics:",
+                            f"- service: {os.getenv('K_SERVICE') or ''}",
+                            f"- revision: {os.getenv('K_REVISION') or ''}",
+                            f"- firestore_error: {st.session_state.get('firestore_error') or ''}",
+                            f"- sid: {st.session_state.get('sid') or _get_query_param('sid') or ''}",
+                        ]
+                    email_body = "\n".join(lines) + "\n"
+
+                    if not _smtp_configured():
+                        st.warning(
+                            "In-app delivery is not configured yet (SMTP env vars missing). "
+                            "Please use the email button above."
+                        )
+                    else:
+                        try:
+                            _send_support_email(subject=email_subject, body=email_body, reply_to=safe_reply or None)
+                            st.success("Sent! Thanks — we’ll get back to you if you included an email.")
+                        except Exception as e:
+                            logger.warning(f"Failed to send support email: {e}", exc_info=True)
+                            st.error("Could not send the message right now. Please use the email button above.")
 
     # Show persistent status indicator if documents are loaded (at top)
     if st.session_state.documents_loaded:

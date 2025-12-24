@@ -512,7 +512,13 @@ def render_auth_session_bridge() -> None:
 
     Streamlit sessions reset on full page refresh; this restores login state from localStorage.
     """
-    st.text_input("auth_session_token", key="auth_session_token", label_visibility="collapsed")
+    # IMPORTANT:
+    # This hidden input is a *widget* whose value is controlled by browser JS (localStorage -> input).
+    # Do NOT use the same Streamlit key for the widget and for the app's auth token, otherwise
+    # attempts to clear/set the token later will raise:
+    #   StreamlitAPIException: session_state.<key> cannot be modified after the widget ... is instantiated
+    AUTH_SESSION_TOKEN_WIDGET_KEY = "__auth_session_token_widget"
+    st.text_input("auth_session_token", key=AUTH_SESSION_TOKEN_WIDGET_KEY, label_visibility="collapsed")
     st.markdown(
         """
 <style>
@@ -568,6 +574,15 @@ def render_auth_session_bridge() -> None:
 """,
         height=0,
     )
+
+    # Copy widget value into the app-owned session key. This is safe because
+    # `auth_session_token` is NOT a widget key.
+    #
+    # We avoid overwriting a non-empty app token with an empty widget token to prevent
+    # transient blanking during the sign-in rerun (localStorage may be persisted later in the run).
+    widget_token = (st.session_state.get(AUTH_SESSION_TOKEN_WIDGET_KEY) or "").strip()
+    if widget_token or not (st.session_state.get("auth_session_token") or "").strip():
+        st.session_state.auth_session_token = widget_token
 
 
 def render_google_sign_in() -> None:
@@ -817,6 +832,15 @@ def main():
       localStorage.removeItem("lab_lens_auth_session");
     }
   } catch (e) {}
+  try {
+    const doc = window.parent && window.parent.document ? window.parent.document : document;
+    const input = doc.querySelector('input[aria-label="auth_session_token"]');
+    if (input) {
+      input.value = "";
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  } catch (e) {}
 </script>
 """,
             height=0,
@@ -834,6 +858,15 @@ def main():
       window.top.localStorage.setItem("lab_lens_auth_session", {json.dumps(token_to_persist)});
     }} else {{
       localStorage.setItem("lab_lens_auth_session", {json.dumps(token_to_persist)});
+    }}
+  }} catch (e) {{}}
+  try {{
+    const doc = window.parent && window.parent.document ? window.parent.document : document;
+    const input = doc.querySelector('input[aria-label="auth_session_token"]');
+    if (input) {{
+      input.value = {json.dumps(token_to_persist)} || "";
+      input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+      input.dispatchEvent(new Event('change', {{ bubbles: true }}));
     }}
   }} catch (e) {{}}
 </script>

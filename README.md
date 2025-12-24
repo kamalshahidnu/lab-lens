@@ -8,6 +8,12 @@ Multi-Modal Healthcare Intelligence Platform for Medical Report Summarization an
 
 Lab Lens is an end-to-end MLOps pipeline for healthcare that combines medical report summarization with diagnostic image analysis. The platform processes MIMIC-III clinical data to provide intelligent insights while ensuring fairness and bias mitigation in healthcare AI systems.
 
+## 🎬 Video Demonstration (How It Works + How To Use)
+
+Watch a short walkthrough of the app, what it does, and how to use it:
+
+- **Video demo**: [Lab Lens — Video Demonstration](https://northeastern-my.sharepoint.com/personal/kamal_sh_northeastern_edu/_layouts/15/stream.aspx?id=%2Fpersonal%2Fkamal_sh_northeastern_edu%2FDocuments%2FVideo_Demonstration.mp4&startedResponseCatch=true&referrer=StreamWebApp.Web&referrerScenario=AddressBarCopied.view.67b0a8ba-7419-4921-b152-5e6efb34cb47) *(may require Northeastern login)*
+
 ### 🎯 Key Features
 
 - **Medical Report Summarization**: Simplifying discharge summaries using MIMIC-III clinical notes

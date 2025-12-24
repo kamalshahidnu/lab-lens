@@ -860,17 +860,21 @@ def main():
                     st.session_state["auth_error"] = "Sign-in failed. Please try again."
 
         # Clear auth params from URL to avoid reprocessing, but keep `sid` if we set it.
-        try:
-            sid = _get_query_param("sid") or st.session_state.get("sid") or ""
-            st.query_params.clear()  # type: ignore[attr-defined]
-            if sid:
+        sid = _get_query_param("sid") or st.session_state.get("sid") or ""
+        # Prefer explicit setter to ensure browser URL updates on Cloud Run.
+        if sid:
+            try:
+                st.query_params.clear()  # type: ignore[attr-defined]
                 st.query_params["sid"] = sid  # type: ignore[index]
-        except Exception:
-            sid = _get_query_param("sid") or st.session_state.get("sid") or ""
-            if sid:
-                st.experimental_set_query_params(sid=sid)
-            else:
-                st.experimental_set_query_params()
+            except Exception:
+                pass
+            st.experimental_set_query_params(sid=sid)
+        else:
+            try:
+                st.query_params.clear()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            st.experimental_set_query_params()
         st.rerun()
 
     # Restore user from Firestore-backed sid if present (survives refresh).
@@ -896,6 +900,30 @@ def main():
     fb_user = ensure_user()
     if not fb_user:
         fb_user = st.session_state.get("user")
+
+    # Ensure a stable sid is present in the URL whenever the user is signed in.
+    # This makes refresh persistence robust even when browser storage is blocked.
+    current_sid = _get_query_param("sid") or ""
+    if fb_user and not current_sid:
+        try:
+            sid = st.session_state.get("sid") or str(uuid4())
+            exp = int(time.time()) + (30 * 24 * 60 * 60)
+            get_firestore_store().upsert_session(
+                sid,
+                {"uid": fb_user.uid, "email": fb_user.email, "name": fb_user.name, "picture": fb_user.picture},
+                exp,
+            )
+            st.session_state.sid = sid
+            try:
+                st.query_params.clear()  # type: ignore[attr-defined]
+                st.query_params["sid"] = sid  # type: ignore[index]
+            except Exception:
+                pass
+            st.experimental_set_query_params(sid=sid)
+            st.rerun()
+        except Exception as e:
+            logger.warning(f"Failed to set sid in URL: {e}")
+
     store = get_firestore_store() if fb_user else None
 
     # --- Sidebar: auth gate ---

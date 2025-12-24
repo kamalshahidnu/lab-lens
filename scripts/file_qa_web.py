@@ -424,19 +424,42 @@ def firebase_web_config() -> Dict[str, str]:
     return cfg
 
 
+def _has_query_params_api() -> bool:
+    # Streamlit forbids mixing st.query_params with experimental_get/set_query_params.
+    return hasattr(st, "query_params")
+
+
 def _get_query_param(name: str) -> Optional[str]:
-    """Query param helper compatible with old/new Streamlit APIs."""
-    try:
+    """Query param helper that NEVER mixes Streamlit APIs."""
+    if _has_query_params_api():
         v = st.query_params.get(name)  # type: ignore[attr-defined]
         if v is None:
             return None
         if isinstance(v, list):
             return v[0] if v else None
         return str(v)
-    except Exception:
-        qp = st.experimental_get_query_params()
-        arr = qp.get(name)
-        return arr[0] if arr else None
+
+    qp = st.experimental_get_query_params()
+    arr = qp.get(name)
+    return arr[0] if arr else None
+
+
+def _set_query_params(**params: str) -> None:
+    """Set query params without mixing APIs."""
+    if _has_query_params_api():
+        st.query_params.clear()  # type: ignore[attr-defined]
+        for k, v in params.items():
+            st.query_params[k] = v  # type: ignore[index]
+        return
+    st.experimental_set_query_params(**params)
+
+
+def _clear_query_params() -> None:
+    """Clear query params without mixing APIs."""
+    if _has_query_params_api():
+        st.query_params.clear()  # type: ignore[attr-defined]
+        return
+    st.experimental_set_query_params()
 
 
 def render_auth_session_bridge() -> None:
@@ -861,20 +884,10 @@ def main():
 
         # Clear auth params from URL to avoid reprocessing, but keep `sid` if we set it.
         sid = _get_query_param("sid") or st.session_state.get("sid") or ""
-        # Prefer explicit setter to ensure browser URL updates on Cloud Run.
         if sid:
-            try:
-                st.query_params.clear()  # type: ignore[attr-defined]
-                st.query_params["sid"] = sid  # type: ignore[index]
-            except Exception:
-                pass
-            st.experimental_set_query_params(sid=sid)
+            _set_query_params(sid=sid)
         else:
-            try:
-                st.query_params.clear()  # type: ignore[attr-defined]
-            except Exception:
-                pass
-            st.experimental_set_query_params()
+            _clear_query_params()
         st.rerun()
 
     # Restore user from Firestore-backed sid if present (survives refresh).
@@ -914,12 +927,7 @@ def main():
                 exp,
             )
             st.session_state.sid = sid
-            try:
-                st.query_params.clear()  # type: ignore[attr-defined]
-                st.query_params["sid"] = sid  # type: ignore[index]
-            except Exception:
-                pass
-            st.experimental_set_query_params(sid=sid)
+            _set_query_params(sid=sid)
             st.rerun()
         except Exception as e:
             logger.warning(f"Failed to set sid in URL: {e}")
@@ -1054,10 +1062,7 @@ def main():
                         get_firestore_store().delete_session(sid)
                 except Exception as e:
                     logger.warning(f"Failed to delete session: {e}")
-                try:
-                    st.query_params.pop("sid", None)  # type: ignore[attr-defined]
-                except Exception:
-                    st.experimental_set_query_params()
+                _clear_query_params()
                 st.session_state.user = None
                 st.session_state.auth_error = None
                 st.session_state.clear_session_token = True

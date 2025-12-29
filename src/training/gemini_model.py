@@ -102,3 +102,5 @@ Summary:"""
         raise ImportError(f"Could not import GeminiSummarizer: {e}. Please ensure google-generativeai is installed.")
 
 __all__ = ["GeminiSummarizer", "load_gemini_model"]
+
+

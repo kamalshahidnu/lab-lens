@@ -25,3 +25,5 @@ def basic_clean(df: pd.DataFrame) -> pd.DataFrame:
     out = out.dropna(subset=["age_at_admission"])
     out = out[(out["age_at_admission"] >= 18) & (out["age_at_admission"] <= 120)]
     return out.reset_index(drop=True)
+
+

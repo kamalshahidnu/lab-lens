@@ -25,3 +25,5 @@ def collect_metrics() -> Dict[str, Any]:
         "configuration": os.getenv("K_CONFIGURATION", ""),
         "model_id": os.getenv("MODEL_ID", ""),
     }
+
+

@@ -273,3 +273,5 @@ class InferenceMonitor:
                 },
                 "drift": self._check_drift_locked(),
             }
+
+

@@ -39,3 +39,5 @@ def validate_data(input_csv: Union[str, Path], report_path: Union[str, Path]) ->
     report_df = pd.DataFrame(rows)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_df.to_csv(report_path, index=False)
+
+

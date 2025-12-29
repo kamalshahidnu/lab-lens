@@ -213,3 +213,5 @@ class VectorDatabase:
             collection_name=collection_name,
             embedding_function=self.embedding_function,
         )
+
+
